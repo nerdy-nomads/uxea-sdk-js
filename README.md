@@ -45,11 +45,43 @@ promessa, e vale a pena saber cedo.
 - **Não envia nada sem mascarar** números, montantes, datas e identificadores dentro
   do texto capturado.
 
+## Estado: o protótipo de identidade já existe e está medido
+
+O cartão `0.2` está feito. O que existe hoje neste repositório:
+
+| Caminho | O que é |
+|---|---|
+| `src/identity/mask.ts` | Mascaramento e normalização de texto, e o resumo FNV-1a |
+| `src/identity/element.ts` | Os cinco sinais de identidade |
+| `src/identity/reconcile.ts` | Reconciliação entre versões, com recusa em caso de empate |
+| `src/identity/index.ts` | O ponto de entrada público, atrás da barreira do `RNF-SDK-01` |
+| `src/safe.ts` | A barreira de erro. Nenhum erro interno chega à aplicação anfitriã |
+| `tools/survival/` | O medidor de sobrevivência. Ver o [README de lá](tools/survival/README.md) |
+
+```bash
+npm run check      # tipos e testes
+npm test           # 24 testes, incluindo a bateria de fuga sobre DOM reais
+npm run survival   # a medição do cartão 0.2
+```
+
+**Medido a 2026-09-07:** precisão 99,72% e cobertura 82,08% sobre 3426 elementos com
+verdade conhecida; 91,1% no `gov.uk` entre os elementos que ainda existem depois de
+três anos. Numa página real, num browser real: 130 elementos em 10 ms, zero erros
+internos.
+
+Falta o resto do SDK: a captura de eventos, a fila, o envio. São os cartões `2.x`.
+
 ## Como identifica um elemento
 
-Cadeia de sinais com reserva, calculada no dispositivo: atributo explícito de teste,
-caminho estrutural estável, rótulo normalizado em resumo criptográfico, e papel mais
-posição no contentor. O servidor reconcilia por maioria quando o principal muda entre
+Cadeia de **cinco** sinais com reserva, calculada no dispositivo: atributo explícito
+de teste, caminho estrutural estável, rótulo normalizado em resumo, **destino da
+ligação normalizado**, e papel mais posição no contentor.
+
+O quinto entrou depois da medição do `0.2`, e não estava no desenho: sem ele, uma
+barra de navegação dava 40,9% de elementos ambíguos. Com ele, 2,2%.
+
+**A identidade é o tuplo dos cinco sinais, e não o principal sozinho**, que colide em
+41% dos elementos de uma página real. O servidor reconcilia por maioria quando o principal muda entre
 versões.
 
 **Quando não reconcilia, o elemento aparece como novo, nunca como outro.** Um
