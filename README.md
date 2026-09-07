@@ -107,6 +107,41 @@ caminho no momento em que a pessoa se autentica chegavam depois da reescrita e
 ficavam sem pseudónimo para sempre. Fechou-se na ingestão, que preenche o dono
 quando já o conhece.
 
+## A API pública
+
+Cinco funções, e nenhuma é obrigatória para o SDK medir. Todas passam pela
+barreira do `RNF-SDK-01`: um erro interno devolve um valor seguro e nunca chega à
+aplicação anfitriã.
+
+| Chamada | Para quê |
+|---|---|
+| `uxda.track(nome, extras?)` | Marcação manual, para o que o browser não deixa ver (`RF-CAP-08`). É a **exceção**: se se tornar a regra, o produto perdeu a promessa |
+| `uxda.identificar(id)` | Liga o anónimo ao pseudónimo depois da autenticação. **O que parecer um identificador direto é resumido aqui**, e o original não sai do dispositivo |
+| `uxda.esquecer()` | Termina a ligação: os eventos seguintes voltam a ser anónimos |
+| `uxda.ecra(nome)` | Declara um ecrã, para aplicações que mudam de vista sem mudar o URL |
+| `uxda.descarregar()` | Força o envio do que está na fila |
+| `uxda.parar()` | Desliga tudo, sem deixar ouvintes atrás |
+| `uxda.diagnostico()` | O que o SDK sabe: identidade, fila, configuração, custo no fio principal e erros internos |
+
+```html
+<!-- O que é obrigatório: a chave. -->
+<script src="https://cdn.uxda.io/uxda.js" data-chave="uxda_pro_..."></script>
+
+<!-- O que é opcional, e para que serve. -->
+<script src="https://cdn.uxda.io/uxda.js"
+        data-chave="uxda_pro_..."
+        data-servidor="https://ingest.uxda.io"
+        data-versao="4.2.0"
+        data-automatico="false"></script>
+```
+
+Por npm, para quem quer decidir o momento do arranque:
+
+```js
+import { iniciar } from "@uxda/sdk-js";
+const uxda = iniciar({ chave: "uxda_pro_...", versao: "4.2.0" });
+```
+
 ## Como identifica um elemento
 
 Cadeia de **cinco** sinais com reserva, calculada no dispositivo: atributo explícito
