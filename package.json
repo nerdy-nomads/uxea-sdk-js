@@ -9,11 +9,21 @@
     "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "survival": "node --experimental-strip-types tools/survival/run.ts",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test && npm run build && npm run orcamento",
+    "build": "node --experimental-strip-types tools/construir.ts",
+    "orcamento": "node --experimental-strip-types tools/orcamento.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.24.2",
     "linkedom": "^0.18.5",
-    "typescript": "^5.7.2",
-    "@types/node": "^22.10.2"
-  }
+    "typescript": "^5.7.2"
+  },
+  "main": "dist/uxda.mjs",
+  "module": "dist/uxda.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ]
 }

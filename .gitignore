@@ -9,3 +9,4 @@ coverage/
 # Derivados do medidor de sobrevivência (cartão 0.2)
 tools/survival/cache/
 tools/survival/demo.html
+exemplo/.index.*.html

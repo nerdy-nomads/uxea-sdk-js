@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="uxda:version" content="1.4.0">
+<title>Loja de ensaio: pagar uma encomenda</title>
+<style>
+  :root { color-scheme: light; --linha: #d8d5cf; --tinta: #1c1a17; --fundo: #faf8f5; --acento: #2f5d7c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--tinta); background: var(--fundo); }
+  header { border-bottom: 1px solid var(--linha); padding: 14px 22px; display: flex; gap: 18px; align-items: baseline; }
+  header strong { font-size: 17px; }
+  nav a { color: var(--acento); text-decoration: none; margin-right: 14px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 22px; display: grid; grid-template-columns: 1fr 380px; gap: 26px; }
+  section { background: #fff; border: 1px solid var(--linha); border-radius: 8px; padding: 20px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.nota { color: #6b6560; margin: 0 0 18px; font-size: 13px; }
+  label { display: block; margin: 14px 0 5px; font-size: 13px; font-weight: 600; }
+  input, select { width: 100%; padding: 9px 11px; border: 1px solid var(--linha); border-radius: 6px; font: inherit; background: #fff; }
+  input:invalid:not(:placeholder-shown) { border-color: #a33; }
+  .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  button { margin-top: 18px; padding: 10px 18px; border: 0; border-radius: 6px; background: var(--acento); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button.secundario { background: #fff; color: var(--acento); border: 1px solid var(--acento); }
+  #diagnostico { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; background: #14181d; color: #cfe3d8; border-radius: 8px; padding: 16px; min-height: 420px; }
+  aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #6b6560; margin: 0 0 10px; }
+  footer { max-width: 1080px; margin: 0 auto 40px; padding: 0 22px; color: #6b6560; font-size: 13px; }
+</style>
+<!-- Isto é a integração inteira: uma linha, e mais nada. -->
+<script src="../dist/uxda.js" data-chave="CHAVE_AQUI" data-servidor="http://localhost:8710"></script>
+</head>
+<body>
+<header>
+  <strong>Loja de ensaio</strong>
+  <nav>
+    <a href="#/produtos" id="ir-produtos">Produtos</a>
+    <a href="#/checkout" id="ir-checkout">Checkout</a>
+    <a href="#/apoio" id="ir-apoio">Apoio</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h1 id="titulo">Pagar a encomenda</h1>
+    <p class="nota">Nenhum campo desta página está instrumentado. O SDK captura sozinho.</p>
+    <form id="pagamento" novalidate>
+      <label for="nome">Nome no cartão</label>
+      <input id="nome" name="nome" placeholder="como está no cartão" required data-testid="campo-nome">
+      <div class="linha">
+        <div>
+          <label for="cartao">Número do cartão</label>
+          <input id="cartao" name="cartao" placeholder="0000 0000 0000 0000" required pattern="[0-9 ]{12,23}" data-testid="campo-cartao">
+        </div>
+        <div>
+          <label for="validade">Validade</label>
+          <input id="validade" name="validade" placeholder="MM/AA" required data-testid="campo-validade">
+        </div>
+      </div>
+      <label for="morada">Morada de faturação</label>
+      <input id="morada" name="morada" placeholder="rua, número, cidade" data-testid="campo-morada">
+      <label for="metodo">Método</label>
+      <select id="metodo" name="metodo" data-testid="campo-metodo">
+        <option>Cartão</option>
+        <option>Multicaixa Express</option>
+        <option>Transferência</option>
+      </select>
+      <button type="submit" data-testid="botao-pagar">Pagar 12.400 Kz</button>
+      <button type="button" class="secundario" id="entrar" data-testid="botao-entrar">Entrar na conta</button>
+      <button type="button" class="secundario" id="falhar" data-testid="botao-falhar">Pedido que falha</button>
+    </form>
+  </section>
+  <aside>
+    <h2>O que o SDK sabe agora</h2>
+    <div id="diagnostico">a arrancar...</div>
+  </aside>
+</main>
+<footer>
+  A chave, o servidor e a versão vêm da etiqueta <code>&lt;script&gt;</code>. Esta página não chama nenhuma função do SDK,
+  tirando o botão de entrar, que existe para mostrar a ligação da identidade.
+</footer>
+<script>
+  // A aplicação de ensaio, tal como uma aplicação de página única faria.
+  const titulo = document.getElementById("titulo");
+  const nomes = { "#/produtos": "Produtos em promoção", "#/checkout": "Pagar a encomenda", "#/apoio": "Apoio ao cliente" };
+  for (const a of document.querySelectorAll("nav a")) {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      history.pushState({}, "", a.getAttribute("href"));
+      titulo.textContent = nomes[a.getAttribute("href")] ?? "Loja";
+    });
+  }
+  document.getElementById("pagamento").addEventListener("submit", (e) => {
+    e.preventDefault();
+    // Validação da aplicação: o SDK vê o `invalid` que o browser dispara.
+    for (const campo of e.target.querySelectorAll("input[required]")) campo.reportValidity?.();
+  });
+  document.getElementById("entrar").addEventListener("click", () => {
+    // O único sítio em que esta página chama o SDK. Repare-se no que se passa:
+    // o email **não** sai daqui, é resumido no dispositivo.
+    window.uxda?.identificar("ana.silva@exemplo.ao");
+  });
+  document.getElementById("falhar").addEventListener("click", () => {
+    // Porta fechada de propósito: um 404 é a aplicação a dizer que não, e isso é
+    // comportamento normal. O que interessa medir é o pedido que **não chega**.
+    fetch("http://localhost:9/api/pedidos/9182").catch(() => {});
+  });
+
+  // Modo de medição: `?medir=800` corre um percurso sintético e mostra o custo.
+  // Existe para a medição em dispositivo de gama baixa do cartão 2.7, onde não há
+  // consola nem depurador: os números têm de aparecer no ecrã e, ao mesmo tempo,
+  // seguir pelo próprio produto para se poderem ler com uma consulta.
+  const params = new URLSearchParams(location.search);
+  const medir = params.get("medir");
+  if (medir) {
+    const n = Math.max(50, Math.min(5000, parseInt(medir, 10) || 500));
+    setTimeout(() => {
+      // `?sem=1` corre o mesmo percurso com o SDK desligado. É a metade que dá
+      // sentido à outra: o custo do SDK é a diferença entre as duas, e não o
+      // tempo total, que é sobretudo o browser a despachar eventos.
+      if (params.get("sem") === "1") window.uxda.parar();
+      const alvo = document.getElementById("nome");
+      const botao = document.querySelector('[data-testid="botao-pagar"]');
+      const antes = window.uxda.diagnostico();
+      const t0 = performance.now();
+      for (let i = 0; i < n; i++) {
+        botao.dispatchEvent(new Event("click", { bubbles: true }));
+        if (i % 4 === 0) {
+          alvo.dispatchEvent(new Event("focusin", { bubbles: true }));
+          alvo.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "a" }));
+          alvo.dispatchEvent(new Event("focusout", { bubbles: true }));
+        }
+      }
+      const ms = performance.now() - t0;
+      const d = window.uxda.diagnostico();
+      const eventos = d.eventosEmitidos - antes.eventosEmitidos;
+      const porEvento = ms / Math.max(1, eventos);
+      const resumo = `${eventos} eventos, ${ms.toFixed(0)} ms no fio principal, ${porEvento.toFixed(3)} ms por evento`;
+      document.getElementById("titulo").textContent = resumo;
+      document.title = resumo;
+      // O número segue pelo caminho do produto, para se poder ler com SQL em vez
+      // de o transcrever de uma captura de ecrã.
+      window.uxda.track(`orcamento_${porEvento.toFixed(3)}ms_${eventos}ev`);
+      setTimeout(() => {
+        const f = window.uxda.diagnostico().fila;
+        const bytes = f.bytes / Math.max(1, f.enviados);
+        window.uxda.track(`trafego_${bytes.toFixed(0)}b_por_evento`);
+        document.getElementById("titulo").textContent = resumo + `, ${bytes.toFixed(0)} bytes por evento`;
+      }, 8000);
+    }, 2500);
+  }
+
+  setInterval(() => {
+    const d = window.uxda?.diagnostico?.();
+    document.getElementById("diagnostico").textContent = d
+      ? JSON.stringify(d, null, 1)
+      : "o SDK ainda não arrancou";
+  }, 500);
+</script>
+</body>
+</html>

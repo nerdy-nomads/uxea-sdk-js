@@ -6,9 +6,6 @@
 O SDK web. Cola-se uma linha no `head` e começa a medir, **sem nenhuma configuração
 obrigatória além da chave**.
 
-**Estado.** Ainda não tem código. O que se segue é a especificação, e os cartões que
-a constroem estão no fim.
-
 ## A promessa que ele carrega
 
 Do registo ao primeiro evento em **menos de dez minutos**. É o primeiro critério de
@@ -45,31 +42,70 @@ promessa, e vale a pena saber cedo.
 - **Não envia nada sem mascarar** números, montantes, datas e identificadores dentro
   do texto capturado.
 
-## Estado: o protótipo de identidade já existe e está medido
+## Estado: existe, corre num browser a sério, e está medido
 
-O cartão `0.2` está feito. O que existe hoje neste repositório:
+Os cartões `2.1` a `2.7` estão fechados. A integração é isto, e mais nada:
+
+```html
+<script src="https://cdn.uxda.io/uxda.js" data-chave="uxda_pro_..."></script>
+```
 
 | Caminho | O que é |
 |---|---|
-| `src/identity/mask.ts` | Mascaramento e normalização de texto, e o resumo FNV-1a |
-| `src/identity/element.ts` | Os cinco sinais de identidade |
-| `src/identity/reconcile.ts` | Reconciliação entre versões, com recusa em caso de empate |
-| `src/identity/index.ts` | O ponto de entrada público, atrás da barreira do `RNF-SDK-01` |
+| `src/index.ts` | A API pública: arranque, `track`, `identificar`, `ecra`, `parar`, `diagnostico` |
+| `src/captura/` | Os dez tipos do `RF-CAP-04`, mais o erro de rede da aplicação anfitriã |
+| `src/fila/` | Fila persistente, lote, recuo exponencial e respeito por rede medida |
+| `src/identidade/` | Identificadores do dispositivo, pseudonimização e a cadeia de sinais |
+| `src/config/` | Configuração remota, com cache e valor por omissão que mede tudo |
+| `src/core/trabalhador.ts` | O envio fora do fio principal, e o recuo para quando não dá |
+| `src/identity/` | Os cinco sinais de identidade de elementos, do cartão `0.2` |
 | `src/safe.ts` | A barreira de erro. Nenhum erro interno chega à aplicação anfitriã |
-| `tools/survival/` | O medidor de sobrevivência. Ver o [README de lá](tools/survival/README.md) |
+| `exemplo/` | Uma loja de ensaio **sem uma linha de instrumentação**, para ver a correr |
+| `tools/orcamento.ts` | Os dois orçamentos, que falham a compilação no CI |
 
 ```bash
-npm run check      # tipos e testes
-npm test           # 24 testes, incluindo a bateria de fuga sobre DOM reais
-npm run survival   # a medição do cartão 0.2
+npm run check      # tipos, 85 ensaios, empacotamento e os dois orçamentos
+npm run build      # dist/uxda.js (CDN, arranca sozinho) e dist/uxda.mjs (npm)
+./exemplo/servir.sh <chave> 8091     # a loja de ensaio, num browser a sério
 ```
 
-**Medido a 2026-09-07:** precisão 99,72% e cobertura 82,08% sobre 3426 elementos com
-verdade conhecida; 91,1% no `gov.uk` entre os elementos que ainda existem depois de
-três anos. Numa página real, num browser real: 130 elementos em 10 ms, zero erros
-internos.
+### Os números, medidos e não estimados
 
-Falta o resto do SDK: a captura de eventos, a fila, o envio. São os cartões `2.x`.
+| O quê | Medido | Limite |
+|---|---|---|
+| Tamanho do pacote | **27,4 KB** (10,4 KB comprimido) | 300 KB (`RNF-SDK-02`) |
+| Fio principal, por evento capturado | **0,031 ms** no computador, **0,236 ms** num telemóvel de um núcleo | 1 ms |
+| Tráfego | **524 bytes** por evento entregue | - |
+| Ensaios | 85, incluindo fuga de conteúdo e injeção de falhas | - |
+
+O ensaio no telemóvel é um emulador Android com **um núcleo** e 1 GB de memória.
+A bateria não se mede lá (o medidor do emulador é sintético, e responde
+`Computed drain: 0`), por isso o custo aparece como tempo de CPU, que é o que a
+gasta: sobre 2000 eventos, a diferença de CPU do processo do browser com e sem o
+SDK ficou **dentro do ruído da medição**, cerca de 2 centésimos de segundo.
+
+![A loja de ensaio, com o diagnóstico do SDK ao lado](exemplo/ensaio-loja.png)
+
+### Quatro coisas que só apareceram por correr isto num browser a sério
+
+**Os ouvintes estavam fora da barreira de erro.** A barreira protegia o que se
+emitia, e não o ouvinte que chamava o emissor: um elemento que lançasse ao ser
+interrogado mandava a exceção para o despacho de eventos da aplicação anfitriã, e
+ela passava a ter avarias nossas com a cara dela. Foi a bateria de injeção de
+falhas do `2.7` a apanhar.
+
+**Guardar a fila custava o quadrado do tamanho dela.** Cada evento serializava a
+fila inteira para saber se ainda cabia. Com a contagem à medida e a escrita
+adiada para o fim do lote, o custo no fio principal caiu de 0,78 ms para 0,031 ms
+por evento: **vinte e cinco vezes**.
+
+**As rotas em `#` não mudavam o ecrã.** Metade das aplicações de página única
+navega assim, e todas elas apareciam como um ecrã só durante a sessão inteira.
+
+**A reescrita retroativa da identidade tinha uma corrida.** Os eventos que iam a
+caminho no momento em que a pessoa se autentica chegavam depois da reescrita e
+ficavam sem pseudónimo para sempre. Fechou-se na ingestão, que preenche o dono
+quando já o conhece.
 
 ## Como identifica um elemento
 
@@ -90,7 +126,8 @@ acredita nele.
 
 ## Stack
 
-**TypeScript**, sem dependências. Distribuído por CDN e por npm.
+**TypeScript**, sem dependências de execução. Empacotado com `esbuild` e
+distribuído por CDN e por npm. A auditoria está em [`AUDITORIA.md`](AUDITORIA.md).
 
 ## Os cartões que o constroem
 

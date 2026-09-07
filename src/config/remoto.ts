@@ -1,0 +1,89 @@
+/**
+ * Configuração remota. RF-CAP-09, RF-CAP-10 e decisão D-10.
+ *
+ * O que isto resolve: uma emergência de volume, às três da tarde, com o cliente
+ * a queimar a quota do plano. Sem configuração remota, a resposta é *"publique
+ * uma versão nova"*, e isso são semanas numa loja de aplicações. Com ela, são
+ * dois minutos e a sessão seguinte já vem amostrada.
+ *
+ * Três regras que se notam ao ler:
+ *
+ *  - **O valor por omissão mede tudo.** Uma configuração que não chega não pode
+ *    deixar o cliente sem dados: a degradação é decisão de quem opera, e nunca
+ *    um acidente de rede.
+ *  - **A cache é a resposta anterior.** Um arranque sem rede usa o que já sabia,
+ *    e não o que estava no código no dia da publicação.
+ *  - **A amostragem é determinística.** O mesmo utilizador está sempre dentro ou
+ *    sempre fora, senão uma tentativa fica com metade dos passos.
+ */
+import type { Ambiente, Armazenamento, Configuracao } from "../core/tipos.ts";
+import { CONFIGURACAO_SEGURA } from "../core/tipos.ts";
+
+const CHAVE_CACHE = "uxda.config";
+/** Seis horas: uma emergência resolve-se na sessão seguinte, não daqui a um dia. */
+export const VALIDADE_MS = 6 * 60 * 60 * 1000;
+
+interface Guardada {
+  config: Configuracao;
+  quando: number;
+}
+
+export function daCache(loja: Armazenamento | null, agora: number): Configuracao | null {
+  try {
+    const bruto = loja?.getItem(CHAVE_CACHE);
+    if (!bruto) return null;
+    const g = JSON.parse(bruto) as Guardada;
+    if (!g?.config || typeof g.quando !== "number") return null;
+    if (agora - g.quando > VALIDADE_MS * 4) return null; // muito velha, ignora-se
+    return normalizar(g.config);
+  } catch {
+    return null;
+  }
+}
+
+export function normalizar(c: any): Configuracao {
+  const amostragem = typeof c?.amostragem === "number" && c.amostragem >= 0 && c.amostragem <= 1
+    ? c.amostragem : CONFIGURACAO_SEGURA.amostragem;
+  const nivel = c?.nivel === "essencial" || c?.nivel === "detalhado" ? c.nivel : "padrao";
+  const captura = Array.isArray(c?.captura) ? c.captura.filter((x: unknown) => typeof x === "string") : [];
+  const versao = typeof c?.versao === "number" ? c.versao : 0;
+  return { amostragem, nivel, captura, versao };
+}
+
+/**
+ * Vai buscar a configuração. Nunca lança e nunca demora: se o servidor não
+ * responder, devolve a cache, e se não houver cache devolve o valor seguro.
+ */
+export async function obter(amb: Ambiente, servidor: string, chave: string): Promise<{ config: Configuracao; origem: "servidor" | "cache" | "omissao" }> {
+  const loja = amb.armazenamento;
+  const cache = daCache(loja, amb.agora());
+  try {
+    // GET, e não POST: a configuração é uma leitura, e assim a resposta pode ser
+    // guardada pela cache do browser e pelo CDN à frente da ingestão.
+    const r = await amb.enviar(`${servidor}/v1/config`, "", { "X-UXDA-Key": chave }, false, "GET");
+    if (r.estado >= 200 && r.estado < 300 && r.corpo) {
+      const corpo = JSON.parse(r.corpo);
+      const config = normalizar(corpo?.dados ?? corpo);
+      try {
+        loja?.setItem(CHAVE_CACHE, JSON.stringify({ config, quando: amb.agora() } satisfies Guardada));
+      } catch { /* sem cache, segue na mesma */ }
+      return { config, origem: "servidor" };
+    }
+  } catch { /* rede em baixo: cai para a cache */ }
+  if (cache) return { config: cache, origem: "cache" };
+  return { config: CONFIGURACAO_SEGURA, origem: "omissao" };
+}
+
+/** Os tipos que o nível deixa passar, quando a lista remota está vazia. */
+export function tiposDoNivel(nivel: Configuracao["nivel"]): string[] {
+  if (nivel === "essencial") return ["ecra", "submissao", "erro", "erro_rede"];
+  if (nivel === "detalhado") return [];
+  return [];
+}
+
+/** Decide se um tipo de evento é para capturar com esta configuração. */
+export function capturaTipo(c: Configuracao, tipo: string): boolean {
+  if (c.captura.length > 0) return c.captura.includes(tipo);
+  const doNivel = tiposDoNivel(c.nivel);
+  return doNivel.length === 0 || doNivel.includes(tipo);
+}
