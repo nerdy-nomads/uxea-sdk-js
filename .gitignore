@@ -7,6 +7,11 @@ coverage/
 .DS_Store
 
 # Derivados do medidor de sobrevivência (cartão 0.2)
-tools/survival/cache/
+#
+# Os instantâneos **ficam** no repositório, e passaram a ficar a 2026-09-07: a
+# bateria de fuga corre sobre eles, e sem eles ela não corre num clone limpo.
+# Foi o CI a dizê-lo, com "faltam instantâneos" à primeira execução. Uma bateria
+# que guarda a promessa mais importante do produto não pode depender de alguém se
+# lembrar de correr uma ferramenta antes.
 tools/survival/demo.html
 exemplo/.index.*.html
