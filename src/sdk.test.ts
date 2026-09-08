@@ -83,6 +83,34 @@ test("2.2 os dez tipos do RF-CAP-04 saem sem uma linha de instrumentação", asy
   }
 });
 
+test("3.1 o plano de fundo leva o tempo que a página esteve mesmo à vista", async () => {
+  // A paridade com o Android obriga: lá o `plano_fundo` traz o tempo ativo, e sem
+  // ele dos dois lados a comparação entre canais da mesma organização (RF-ADM-10)
+  // tem o número numa plataforma e um vazio na outra.
+  //
+  // E é **tempo à vista**, não tempo desde que abriu: um separador aberto de manhã
+  // e esquecido não são oito horas de uso.
+  const { br, uxda } = await comSdk();
+
+  await br.avancar(3000);
+  (br.documento as any).visibilityState = "hidden";
+  disparar(br.documento, "body", "visibilitychange");
+
+  (br.documento as any).visibilityState = "visible";
+  disparar(br.documento, "body", "visibilitychange");
+  await br.avancar(2000);
+  (br.documento as any).visibilityState = "hidden";
+  disparar(br.documento, "body", "visibilitychange");
+
+  await uxda.descarregar();
+  await br.avancar(20000);
+
+  const fundo = br.eventos().filter((e) => e.event_type === "plano_fundo");
+  assert.equal(fundo.length, 2, "um por cada vez que a página se escondeu");
+  assert.ok((fundo[0].duration_ms as number) >= 3000, `primeiro: ${fundo[0].duration_ms}`);
+  assert.ok((fundo[1].duration_ms as number) >= 5000, `acumula as duas visitas: ${fundo[1].duration_ms}`);
+});
+
 test("2.2 a hesitação é medida, e a tecla escrita nunca é lida", async () => {
   const { br, uxda } = await comSdk();
   disparar(br.documento, "#nome", "focusin");

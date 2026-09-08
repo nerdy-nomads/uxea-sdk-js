@@ -23,7 +23,7 @@ npm ci
 npm run check        # tipos, ensaios, empacotamento e os dois orçamentos
 ```
 
-O que isto corre, por esta ordem: verificação de tipos; **85 ensaios**, dos quais
+O que isto corre, por esta ordem: verificação de tipos; **86 ensaios**, dos quais
 uma bateria de fuga sobre DOM reais de três aplicações públicas e uma bateria de
 injeção de falhas que parte o SDK ponto de entrada a ponto de entrada; o
 empacotamento; e os orçamentos de tamanho e de tempo no fio principal, que falham

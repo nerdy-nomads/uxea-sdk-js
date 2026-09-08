@@ -206,8 +206,23 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
 
   /* ------------------------------------------------------------ ciclo de vida */
 
+  // O tempo que a página esteve mesmo à vista, e não o tempo desde que abriu: um
+  // separador aberto de manhã e esquecido não são oito horas de uso.
+  //
+  // Vai no `duration_ms` do `plano_fundo`, que é onde o SDK Android o põe. Sem ele
+  // dos dois lados, a comparação entre a aplicação móvel e o sítio Web da mesma
+  // organização (RF-ADM-10) tem o número numa plataforma e um vazio na outra.
+  let aVistaDesde = documento?.visibilityState === "hidden" ? 0 : nucleo.agora();
+  let tempoAtivoMs = 0;
+
   ouvir(documento, "visibilitychange", () => {
-    if (documento?.visibilityState === "hidden") nucleo.emitir("plano_fundo", {});
+    if (documento?.visibilityState === "hidden") {
+      if (aVistaDesde > 0) tempoAtivoMs += Math.max(0, Math.round(nucleo.agora() - aVistaDesde));
+      aVistaDesde = 0;
+      nucleo.emitir("plano_fundo", { duration_ms: tempoAtivoMs });
+    } else if (aVistaDesde === 0) {
+      aVistaDesde = nucleo.agora();
+    }
   });
 
   return {

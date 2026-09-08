@@ -64,7 +64,7 @@ Os cartões `2.1` a `2.7` estão fechados. A integração é isto, e mais nada:
 | `tools/orcamento.ts` | Os dois orçamentos, que falham a compilação no CI |
 
 ```bash
-npm run check      # tipos, 85 ensaios, empacotamento e os dois orçamentos
+npm run check      # tipos, 86 ensaios, empacotamento e os dois orçamentos
 npm run build      # dist/uxda.js (CDN, arranca sozinho) e dist/uxda.mjs (npm)
 ./exemplo/servir.sh <chave> 8091     # a loja de ensaio, num browser a sério
 ```
