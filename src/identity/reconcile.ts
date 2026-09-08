@@ -55,7 +55,27 @@ function cauda(caminho: string | null, n = 2): string | null {
  * Devolve entre 0 e 1, e 1 quer dizer que todos os sinais comparáveis bateram.
  */
 export function pontuar(a: Sinais, b: Sinais): number {
-  if (a.testid && b.testid) return a.testid === b.testid ? 1 : 0;
+  if (a.testid && b.testid && a.testid === b.testid) return 1;
+  /**
+   * **Identificadores diferentes já não anulam tudo.** Anulavam, e o cartão `3.3`
+   * mostrou o preço disso num telemóvel: entre duas versões da mesma aplicação, o
+   * botão de pagar mudou de `id=pagar` para `id=botao_pagamento` e ficou
+   * irreconhecível, com o rótulo, o caminho e o papel todos iguais.
+   *
+   * Na web um `data-testid` é um contrato que quase ninguém mexe. Em Android o
+   * identificador de recurso é **um nome de variável**, e renomeia-se numa
+   * arrumação de código sem ninguém pensar duas vezes.
+   *
+   * A regra é estreita de propósito: uma renomeação só se reconhece quando **todo
+   * o resto** bate certo. Se algum dos outros sinais também mudou, não há como
+   * distinguir uma renomeação de um elemento novo, e aí vale a regra de sempre:
+   * aparece como novo, e nunca como outro.
+   */
+  if (a.testid && b.testid) return pontuarRestantes(a, b) >= 1 ? 0.85 : 0;
+  return pontuarRestantes(a, b);
+}
+
+function pontuarRestantes(a: Sinais, b: Sinais): number {
   // Destinos diferentes não são o mesmo elemento, por mais que o resto se pareça.
   if (a.destino && b.destino && a.destino !== b.destino) return 0;
 
