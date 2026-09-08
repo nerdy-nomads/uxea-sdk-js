@@ -58,6 +58,10 @@ interface EstadoCampo {
 }
 
 export interface Ligacao {
+  /** A página deixou de estar à vista: emite o `plano_fundo` com o tempo ativo. */
+  esconder(): void;
+  /** E voltou: o relógio do tempo à vista recomeça. */
+  mostrar(): void;
   desligar(): void;
 }
 
@@ -212,20 +216,24 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
   // Vai no `duration_ms` do `plano_fundo`, que é onde o SDK Android o põe. Sem ele
   // dos dois lados, a comparação entre a aplicação móvel e o sítio Web da mesma
   // organização (RF-ADM-10) tem o número numa plataforma e um vazio na outra.
+  //
+  // **Quem ouve o `visibilitychange` é o arranque, e não este módulo.** O ouvinte
+  // do fecho está registado na janela, em fase de captura, e por isso corre
+  // *antes* de qualquer ouvinte do documento: a fila era despejada e só depois é
+  // que o `plano_fundo` era emitido, ficando para trás numa página a morrer.
+  // Tendo os dois no mesmo sítio, a ordem vê-se.
   let aVistaDesde = documento?.visibilityState === "hidden" ? 0 : nucleo.agora();
   let tempoAtivoMs = 0;
 
-  ouvir(documento, "visibilitychange", () => {
-    if (documento?.visibilityState === "hidden") {
+  return {
+    esconder() {
       if (aVistaDesde > 0) tempoAtivoMs += Math.max(0, Math.round(nucleo.agora() - aVistaDesde));
       aVistaDesde = 0;
       nucleo.emitir("plano_fundo", { duration_ms: tempoAtivoMs });
-    } else if (aVistaDesde === 0) {
-      aVistaDesde = nucleo.agora();
-    }
-  });
-
-  return {
+    },
+    mostrar() {
+      if (aVistaDesde === 0) aVistaDesde = nucleo.agora();
+    },
     desligar() {
       for (const d of desligadores.splice(0)) {
         try { d(); } catch { /* desligar não pode falhar */ }

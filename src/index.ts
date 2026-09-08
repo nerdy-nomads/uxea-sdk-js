@@ -183,10 +183,21 @@ export function iniciar(op: Opcoes): Uxda {
     nucleo.emitir("ecra", {});
     // O fim da página é o momento em que mais se perde: é aqui que estão o
     // abandono e a desistência, e é a última oportunidade de os entregar.
+    // **A ordem é o que faz o evento chegar.** O `plano_fundo` entra na fila
+    // primeiro, e só depois é que ela é despejada: ao contrário, o despejo levava
+    // o que já lá estava e o evento que fecha a tentativa ficava para trás,
+    // precisamente numa página que está a morrer e não vai ter outra
+    // oportunidade. Foi visto num browser a sério, e não aparecia em ensaio
+    // nenhum porque o duplo não propagava os eventos do documento até à janela.
     const aoEsconder = () => {
-      if (documento?.visibilityState === "hidden") void fila.fechar();
+      if (documento?.visibilityState === "hidden") {
+        ligacao?.esconder();
+        void fila.fechar();
+      } else {
+        ligacao?.mostrar();
+      }
     };
-    const aoSair = () => { void fila.fechar(); };
+    const aoSair = () => { ligacao?.esconder(); void fila.fechar(); };
     janela?.addEventListener?.("visibilitychange", aoEsconder, true);
     janela?.addEventListener?.("pagehide", aoSair, true);
     desligarCiclo.push(() => janela?.removeEventListener?.("visibilitychange", aoEsconder, true));

@@ -103,6 +103,8 @@ export function criarBrowser(html = "<h1>ensaio</h1>", opcoes: { caminho?: strin
     localStorage: loja,
   };
   (document as any).visibilityState = "visible";
+  // A ponte que deixa o `disparar` levar o evento à janela, como o DOM leva.
+  (document as any).__janela = janela;
 
   const enviar = async (url: string, corpo: string, cabecalhos: Record<string, string>, sincrono: boolean, metodo = "POST"): Promise<Resposta> => {
     const p: Pedido = { url, corpo, cabecalhos, sincrono, metodo, estado: 0 };
@@ -155,10 +157,18 @@ export function criarBrowser(html = "<h1>ensaio</h1>", opcoes: { caminho?: strin
   return br;
 }
 
-/** Dispara um evento do DOM que sobe, como no browser. */
+/** Dispara um evento do DOM que sobe, como no browser.
+ *
+ * **E chega à janela primeiro**, que é o que o browser faz e o duplo não fazia.
+ * Um ouvinte registado na janela em fase de captura corre antes de qualquer
+ * ouvinte do documento, e essa ordem escondia um defeito a sério: o despejo da
+ * fila corria antes de o `plano_fundo` ser emitido, e o evento que fecha uma
+ * tentativa perdia-se numa página a morrer. Nos ensaios tudo passava.
+ */
 export function disparar(documento: any, seletor: string, tipo: string, extras: Record<string, unknown> = {}): void {
   const el = documento.querySelector(seletor);
   if (!el) throw new Error(`sem elemento ${seletor}`);
+  (documento as any).__janela?.dispararJanela?.(tipo, extras);
   const ev = new (documento.defaultView as any).Event(tipo, { bubbles: true, cancelable: true });
   Object.assign(ev, extras);
   el.dispatchEvent(ev);

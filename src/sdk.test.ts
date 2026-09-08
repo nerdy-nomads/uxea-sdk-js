@@ -102,11 +102,14 @@ test("3.1 o plano de fundo leva o tempo que a página esteve mesmo à vista", as
   (br.documento as any).visibilityState = "hidden";
   disparar(br.documento, "body", "visibilitychange");
 
-  await uxda.descarregar();
+  // **Sem `descarregar()` pelo meio, de propósito.** O que se está a fixar é que o
+  // esconder da página entrega o evento por si: numa página a morrer não há
+  // segunda oportunidade, e a versão anterior despejava a fila antes de o
+  // `plano_fundo` lá entrar, perdendo exatamente o evento que fecha a tentativa.
   await br.avancar(20000);
 
   const fundo = br.eventos().filter((e) => e.event_type === "plano_fundo");
-  assert.equal(fundo.length, 2, "um por cada vez que a página se escondeu");
+  assert.equal(fundo.length, 2, "um por cada vez que a página se escondeu, entregue pelo próprio esconder");
   assert.ok((fundo[0].duration_ms as number) >= 3000, `primeiro: ${fundo[0].duration_ms}`);
   assert.ok((fundo[1].duration_ms as number) >= 5000, `acumula as duas visitas: ${fundo[1].duration_ms}`);
 });
