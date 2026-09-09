@@ -9,9 +9,10 @@
     "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "survival": "node --experimental-strip-types tools/survival/run.ts",
-    "check": "npm run typecheck && npm test && npm run build && npm run orcamento",
+    "check": "npm run typecheck && npm test && npm run build && npm run orcamento && npm run volume",
     "build": "node --experimental-strip-types tools/construir.ts",
-    "orcamento": "node --experimental-strip-types tools/orcamento.ts"
+    "orcamento": "node --experimental-strip-types tools/orcamento.ts",
+    "volume": "node --experimental-strip-types tools/volume.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -6,6 +6,10 @@
 <meta name="uxda:version" content="1.4.0">
 <title>Loja de ensaio: pagar uma encomenda</title>
 <style>
+  .zona-morta {
+    padding: 14px 16px; margin: 4px 0; border-radius: 10px;
+    background: #efeaf7; color: #4b3b6b; text-align: center; cursor: default;
+  }
   :root { color-scheme: light; --linha: #d8d5cf; --tinta: #1c1a17; --fundo: #faf8f5; --acento: #2f5d7c; }
   * { box-sizing: border-box; }
   body { margin: 0; font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--tinta); background: var(--fundo); }
@@ -66,6 +70,15 @@
       <button type="submit" data-testid="botao-pagar">Pagar 12.400 Kz</button>
       <button type="button" class="secundario" id="entrar" data-testid="botao-entrar">Entrar na conta</button>
       <button type="button" class="secundario" id="falhar" data-testid="botao-falhar">Pedido que falha</button>
+
+      <!--
+        As três armadilhas do cartão 4.1, e existem para se ver o que nenhuma
+        ferramenta de funis mostra: um funil vê os passos que aconteceram, e nada
+        disto é um passo.
+      -->
+      <div id="zona-morta" class="zona-morta">Precisa de ajuda? Fale connosco</div>
+      <button type="button" class="secundario" id="confirmar" disabled>Confirmar encomenda</button>
+      <button type="button" class="secundario" id="lento" data-testid="botao-lento">Botão lento (2 segundos)</button>
     </form>
   </section>
   <aside>
@@ -75,7 +88,8 @@
 </main>
 <footer>
   A chave, o servidor e a versão vêm da etiqueta <code>&lt;script&gt;</code>. Esta página não chama nenhuma função do SDK,
-  tirando o botão de entrar, que existe para mostrar a ligação da identidade.
+  tirando o botão de entrar, que existe para mostrar a ligação da identidade. A zona morta, o botão desativado e o
+  botão lento estão aqui de propósito: é o que o cartão <code>4.1</code> mede, e é o que um funil nunca mostra.
 </footer>
 <script>
   // A aplicação de ensaio, tal como uma aplicação de página única faria.
@@ -98,6 +112,17 @@
     // o email **não** sai daqui, é resumido no dispositivo.
     window.uxda?.identificar("ana.silva@exemplo.ao");
   });
+  // O botão lento: fica ocupado dois segundos e não diz nada a ninguém. É onde
+  // se vê o toque em carregamento e o toque repetido, que são o sistema a não
+  // responder à vista de quem está do outro lado.
+  document.getElementById("lento").addEventListener("click", (e) => {
+    // Dois segundos ocupado, e sem depender de rede nenhuma: um ensaio que só
+    // funciona com internet é um ensaio que não corre quando faz falta.
+    const b = e.currentTarget;
+    b.setAttribute("aria-busy", "true");
+    setTimeout(() => b.removeAttribute("aria-busy"), 2000);
+  });
+
   document.getElementById("falhar").addEventListener("click", () => {
     // Porta fechada de propósito: um 404 é a aplicação a dizer que não, e isso é
     // comportamento normal. O que interessa medir é o pedido que **não chega**.

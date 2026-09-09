@@ -1,0 +1,36 @@
+
+volume por nível, na mesma tarefa da loja de ensaio
+
+  nível        eventos    bytes   bytes/evento   contra o padrão
+  essencial        6     3081            514             0.30x
+  padrao          20    10816            541             1.00x
+  detalhado       26    13874            534             1.30x
+
+  o que cada nível emite, por tipo
+
+  tipo                      essencial     padrao  detalhado
+  campo                             0          6          6
+  desfoco                           0          0          3
+  ecra                              3          3          3
+  erro                              1          1          1
+  foco                              0          3          3
+  passo                             0          2          2
+  primeira_interacao                0          1          1
+  submissao                         1          1          1
+  tecla                             0          0          3
+  terminal                          1          1          1
+  toque_repetido                    0          1          1
+  toque_sem_alvo                    0          1          1
+
+  e sem agregação no dispositivo, um evento por tecla
+
+  padrão com agregação         20 eventos
+  o mesmo, um por tecla        46 eventos   2.3x
+  teclas nesta tarefa          32
+
+  extrapolado: dez tarefas por dia, trinta dias
+
+  essencial      1800 eventos      903 KB por utilizador e por mês
+  padrao         6000 eventos     3169 KB por utilizador e por mês
+  detalhado      7800 eventos     4065 KB por utilizador e por mês
+
