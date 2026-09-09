@@ -149,6 +149,11 @@ test("2.7 argumentos absurdos na API pública não passam disso", async () => {
   uxda.track(circular);
   uxda.track(null as any, circular);
   uxda.ecra(undefined as any);
+  uxda.passo(circular);
+  uxda.terminal("inventado" as any);
+  uxda.mensagem(circular, null as any, circular);
+  uxda.mensagem("", "erro");
+  uxda.erroTecnico(null as any, circular);
   await uxda.identificar(12345 as any);
   await uxda.descarregar();
   await br.avancar(60000);

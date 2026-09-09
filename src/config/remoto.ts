@@ -49,7 +49,13 @@ export function normalizar(c: any): Configuracao {
   const versao = typeof c?.versao === "number" ? c.versao : 0;
   const amostragemDetalhado = Math.min(1, Math.max(0,
     typeof c?.amostragem_detalhado === "number" ? c.amostragem_detalhado : 0));
-  return { amostragem, nivel, captura, versao, amostragemDetalhado };
+  // A lista de permissões do RNF-PRI-04. **Vazia por omissão**, e é isso que
+  // "mascaramento por omissão" quer dizer: uma configuração que não chega, ou que
+  // chega estragada, deixa tudo mascarado, e nunca o contrário.
+  const mensagensExpostas = Array.isArray(c?.mensagens_expostas)
+    ? c.mensagens_expostas.filter((x: unknown) => typeof x === "string" && x).slice(0, 200)
+    : [];
+  return { amostragem, nivel, captura, versao, amostragemDetalhado, mensagensExpostas };
 }
 
 /**

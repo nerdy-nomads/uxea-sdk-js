@@ -30,6 +30,7 @@ import { serializar } from "../identidade/elemento.ts";
 import { ligarToques } from "./toques.ts";
 import { ligarCampos } from "./campos.ts";
 import { ligarProgressao, type EstadoTerminal } from "./progressao.ts";
+import { ligarMensagens, type TipoDeMensagem } from "./mensagens.ts";
 
 export interface Emissor {
   (tipo: string, extras?: Record<string, unknown>): void;
@@ -44,6 +45,12 @@ export interface Nucleo {
   nivel?(): "essencial" | "padrao" | "detalhado";
   /** Pedidos da aplicação em voo, para saber se ela está ocupada. */
   emVoo?(): number;
+  /**
+   * As chaves de mensagem que a instituição autorizou a sair por inteiro
+   * (RNF-PRI-04). Sem lista, tudo sai mascarado, que é o que "por omissão" quer
+   * dizer.
+   */
+  mensagemExposta?(chave: string): boolean;
 }
 
 /**
@@ -73,6 +80,10 @@ export interface Ligacao {
   espera(ms: number): void;
   /** O fim da tentativa, sem ambiguidade (RF-GRA-23). */
   terminal(estado: EstadoTerminal): void;
+  /** Uma mensagem que a aplicação declara, e que o SDK não veria sozinho. */
+  mensagem(chave: string, tipo: TipoDeMensagem, extras?: Record<string, unknown>): void;
+  /** Um erro técnico que ninguém viu no ecrã (RF-MSG-06). Vem da rede. */
+  mensagemTecnica(chave: string, propriedades: Record<string, unknown>, elemento?: string): void;
   desligar(): void;
 }
 
@@ -121,9 +132,21 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     campoDeAbandono: () => campos.campoDeAbandono(),
   });
 
+  // As mensagens de sistema (RF-MSG). Ligam-se depois da progressão porque
+  // perguntam-lhe em que passo a tentativa vai: uma mensagem sem passo é uma
+  // mensagem que ninguém consegue localizar no percurso (RF-MSG-05).
+  const mensagens = ligarMensagens(janela, documento, {
+    emitir: nucleo.emitir,
+    agora: nucleo.agora,
+    chaveDe,
+    passo: () => progressao.passoAtual(),
+    exposta: (chave) => nucleo.mensagemExposta?.(chave) ?? false,
+  });
+
   desligadores.push(() => campos.desligar());
   desligadores.push(() => toques.desligar());
   desligadores.push(() => progressao.desligar());
+  desligadores.push(() => mensagens.desligar());
 
   /* ------------------------------------------------------------------ ecrã */
 
@@ -262,6 +285,8 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     passo: (nome: string) => progressao.passo(nome),
     espera: (ms: number) => progressao.espera(ms),
     terminal: (estado: EstadoTerminal) => progressao.terminal(estado),
+    mensagem: (chave, tipo, extras) => mensagens.declarar(chave, tipo, extras),
+    mensagemTecnica: (chave, props, elemento) => mensagens.tecnico(chave, props, elemento),
     desligar() {
       for (const d of desligadores.splice(0)) {
         try { d(); } catch { /* desligar não pode falhar */ }

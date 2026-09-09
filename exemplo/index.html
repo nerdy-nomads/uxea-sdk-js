@@ -79,6 +79,22 @@
       <div id="zona-morta" class="zona-morta">Precisa de ajuda? Fale connosco</div>
       <button type="button" class="secundario" id="confirmar" disabled>Confirmar encomenda</button>
       <button type="button" class="secundario" id="lento" data-testid="botao-lento">Botão lento (2 segundos)</button>
+
+      <!--
+        As mensagens do cartão 5.1, e as quatro classes do RF-MSG-01. Nada disto
+        está instrumentado: são `div` com `role="alert"` e com as classes do
+        costume, tal como qualquer aplicação as escreve.
+
+        A primeira traz a **chave** (`data-uxda-mensagem`), e é o caminho que o
+        RF-MSG-02 manda preferir: estável, independente do idioma, sem dados lá
+        dentro. As outras só têm texto, e é aí que o mascaramento do 5.2 tem de
+        funcionar, porque elas trazem montantes, documentos e um nome.
+      -->
+      <button type="button" class="secundario" id="msg-chave" data-testid="botao-msg-chave">Mensagem com chave</button>
+      <button type="button" class="secundario" id="msg-texto" data-testid="botao-msg-texto">Mensagem só com texto</button>
+      <button type="button" class="secundario" id="msg-campo" data-testid="botao-msg-campo">Erro no campo do cartão</button>
+      <button type="button" class="secundario" id="msg-tecnico" data-testid="botao-msg-tecnico">Erro que ninguém vê</button>
+      <div id="avisos" aria-live="polite"></div>
     </form>
   </section>
   <aside>
@@ -121,6 +137,44 @@
     const b = e.currentTarget;
     b.setAttribute("aria-busy", "true");
     setTimeout(() => b.removeAttribute("aria-busy"), 2000);
+  });
+
+  // As mensagens do cartão 5.1. A página **só as mostra**: quem as vê, classifica
+  // e mascara é o SDK, sem uma linha de instrumentação.
+  const avisos = document.getElementById("avisos");
+  function mostrar(html) {
+    const molde = document.createElement("div");
+    molde.innerHTML = html;
+    for (const filho of Array.from(molde.children)) avisos.appendChild(filho);
+    // Some ao fim de seis segundos, como um aviso a sério.
+    setTimeout(() => { for (const filho of Array.from(molde.children)) filho.remove(); }, 6000);
+  }
+  document.getElementById("msg-chave").addEventListener("click", () => {
+    mostrar('<div role="alert" class="alert alert-danger" data-uxda-mensagem="saldo_insuficiente">Saldo insuficiente para esta operação</div>');
+  });
+  document.getElementById("msg-texto").addEventListener("click", () => {
+    // Montante, documento, data e um nome, tudo lá dentro. É o risco crítico do
+    // documento, e o que sai é `O saldo de {numero} Kz do documento {id} ...`.
+    mostrar('<div role="alert" class="alert alert-danger">O saldo de 12.400,50 Kz do documento 005123456LA041 nao chega para Ana Maria da Silva em 2027-03-14</div>');
+  });
+  document.getElementById("msg-campo").addEventListener("click", () => {
+    // Uma mensagem ao lado de um campo é um **erro de validação**, e não de
+    // operação: é trabalho de quem desenhou o formulário, e o SDK separa-os.
+    const campo = document.getElementById("cartao");
+    let erro = document.getElementById("erro-cartao");
+    if (!erro) {
+      erro = document.createElement("span");
+      erro.id = "erro-cartao";
+      erro.className = "invalid-feedback";
+      campo.setAttribute("aria-describedby", "erro-cartao");
+      campo.parentElement.appendChild(erro);
+    }
+    erro.textContent = "O cartão 4111 1111 1111 1111 foi recusado pelo banco emissor";
+  });
+  document.getElementById("msg-tecnico").addEventListener("click", () => {
+    // O que corre mal **sem chegar ao ecrã** (RF-MSG-06). Nada aparece à pessoa,
+    // e é isso que o torna a causa de abandono mais difícil de explicar.
+    window.uxda?.erroTecnico("resposta_ilegivel", { operacao: "pagamento" });
   });
 
   document.getElementById("falhar").addEventListener("click", () => {

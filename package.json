@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
+    "fuga": "node --test --experimental-strip-types \"src/fuga.test.ts\" \"src/identity/fuga.test.ts\"",
     "typecheck": "tsc --noEmit",
     "survival": "node --experimental-strip-types tools/survival/run.ts",
     "check": "npm run typecheck && npm test && npm run build && npm run orcamento && npm run volume",

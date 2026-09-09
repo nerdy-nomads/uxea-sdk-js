@@ -100,6 +100,10 @@ export function criarBrowser(html = "<h1>ensaio</h1>", opcoes: { caminho?: strin
     removeEventListener: (t: string, fn: Function) => alvoJanela.removeEventListener(t, fn),
     dispararJanela: (t: string, e?: any) => alvoJanela.disparar(t, e),
     Event: (window as any).Event,
+    // O observador de mutações é o do `linkedom`, e é a sério: a captura de
+    // mensagens do RF-MSG-01 vive dele, e um duplo escrito à mão teria provado
+    // que o nosso duplo funciona, e não que a captura funciona.
+    MutationObserver: (window as any).MutationObserver,
     localStorage: loja,
   };
   (document as any).visibilityState = "visible";

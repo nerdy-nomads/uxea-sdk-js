@@ -109,7 +109,7 @@ quando já o conhece.
 
 ## A API pública
 
-Cinco funções, e nenhuma é obrigatória para o SDK medir. Todas passam pela
+Nove funções, e nenhuma é obrigatória para o SDK medir. Todas passam pela
 barreira do `RNF-SDK-01`: um erro interno devolve um valor seguro e nunca chega à
 aplicação anfitriã.
 
@@ -119,6 +119,10 @@ aplicação anfitriã.
 | `uxda.identificar(id)` | Liga o anónimo ao pseudónimo depois da autenticação. **O que parecer um identificador direto é resumido aqui**, e o original não sai do dispositivo |
 | `uxda.esquecer()` | Termina a ligação: os eventos seguintes voltam a ser anónimos |
 | `uxda.ecra(nome)` | Declara um ecrã, para aplicações que mudam de vista sem mudar o URL |
+| `uxda.passo(nome)` | Declara uma transição de passo dentro da tarefa (`RF-GRA-20`), para fluxos que acontecem no mesmo ecrã |
+| `uxda.terminal(estado)` | Fecha a tentativa sem ambiguidade: `sucesso`, `erro`, `abandonado` ou `expirado` |
+| `uxda.mensagem(chave, tipo, extras?)` | Declara uma mensagem apresentada ao utilizador. Para o que o SDK não vê sozinho: um `canvas`, uma notificação do sistema, ou uma aplicação que prefere declarar a chave |
+| `uxda.erroTecnico(chave, props?)` | Declara um erro que **ninguém viu no ecrã** (`RF-MSG-06`): uma promessa rejeitada, uma resposta ilegível, um passo que falhou em silêncio |
 | `uxda.descarregar()` | Força o envio do que está na fila |
 | `uxda.parar()` | Desliga tudo, sem deixar ouvintes atrás |
 | `uxda.diagnostico()` | O que o SDK sabe: identidade, fila, configuração, custo no fio principal e erros internos |
@@ -141,6 +145,53 @@ Por npm, para quem quer decidir o momento do arranque:
 import { iniciar } from "@uxda/sdk-js";
 const uxda = iniciar({ chave: "uxda_pro_...", versao: "4.2.0" });
 ```
+
+## Mensagens: dê-nos a chave, e o texto não sai do dispositivo
+
+O SDK apanha sozinho o que a aplicação mostra: `role="alert"`, `role="status"`,
+`aria-live`, `<output>`, e as classes do costume (`toast`, `snackbar`, `alert`,
+`invalid-feedback`, `notification`). Classifica em **erro, aviso, sucesso e
+informação**, e separa os erros em **validação num campo, operação e sistema**,
+que é a diferença entre três equipas que fazem trabalho diferente.
+
+Quando a aplicação diz qual é a mensagem, o resultado é melhor em três frentes ao
+mesmo tempo, e é por isso que vale a pena:
+
+```html
+<!-- Uma linha, e não muda nada no que a pessoa vê. -->
+<div role="alert" data-uxda-mensagem="saldo_insuficiente">Saldo insuficiente</div>
+```
+
+| Sem chave, só com texto | Com chave |
+|---|---|
+| O texto sai, **mascarado** | **O texto não sai de todo.** Não há nada para mascarar nem para arriscar |
+| A mesma mensagem em português e em inglês dá **duas entradas** no catálogo | Dá **uma**, e a contagem é a verdadeira |
+| Mudar a redação parte a série histórica | A série sobrevive a qualquer reescrita |
+| A mascaragem é uma heurística, e mascara a mais | Não há heurística nenhuma pelo meio |
+
+O atributo pode ser `data-uxda-mensagem`, `data-mensagem`, `data-message-key`,
+`data-i18n` ou `data-l10n-id`: se já usa uma biblioteca de tradução, **já tem a
+chave** e não precisa de escrever nada.
+
+E quando não há chave, o texto sai assim:
+
+```
+O saldo de 12.400,50 Kz do documento 005123456LA041 nao chega para Ana Maria da Silva em 2027-03-14
+→ O saldo de {numero} Kz do documento {id} nao chega para {nome} em {data}
+```
+
+Números, montantes, datas, horas, correio electrónico e identificadores, que é o
+que o `RF-MSG-04` enumera; e ainda **nomes de duas ou mais palavras e o que estiver
+entre aspas**, que o requisito não enumera e existe na mesma. Tudo isto acontece
+**no dispositivo, antes de qualquer envio**, e a ingestão volta a verificar: um
+texto que chegue com um arroba ou com cinco algarismos seguidos é recusado, e não
+mascarado do outro lado.
+
+A instituição pode autorizar chaves cuja mensagem sai por inteiro
+(`mensagens_expostas`, na configuração remota). **Há um chão que essa lista não
+levanta:** números, identificadores e correio electrónico saem sempre mascarados.
+O desenho inteiro está no
+[ADR 0020](../../docs/adr/0020-mensagens-a-chave-o-texto-e-o-chao-da-mascaragem.md).
 
 ## Como identifica um elemento
 

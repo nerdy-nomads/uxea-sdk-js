@@ -29,6 +29,8 @@ export interface ContextoDeProgressao {
 export interface LigacaoDeProgressao {
   /** Uma transição de passo, com o tempo que o anterior levou. */
   passo(nome: string): void;
+  /** Em que passo a tentativa vai. É o contexto do RF-MSG-05, e não emite nada. */
+  passoAtual(): string;
   /** Uma espera imposta pelo sistema, medida de ponta a ponta. */
   espera(ms: number): void;
   /** Fecha a tentativa, sem ambiguidade. */
@@ -81,6 +83,8 @@ export function ligarProgressao(janela: any, documento: any, ctx: ContextoDeProg
   }
 
   return {
+    passoAtual: () => passoAtual,
+
     passo(nome: string) {
       if (ctx.essencial() || !nome) return;
       const agora = ctx.agora();

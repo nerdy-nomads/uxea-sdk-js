@@ -68,6 +68,25 @@ export interface Uxda {
    * Sem isto, o abandono e a conclusão misturam-se e todas as taxas ficam erradas.
    */
   terminal(estado: "sucesso" | "erro" | "abandonado" | "expirado"): void;
+  /**
+   * Declara uma mensagem apresentada ao utilizador (RF-MSG-01, RF-MSG-02).
+   *
+   * A captura automática apanha o que está no DOM com `role="alert"`, com
+   * `aria-live` ou com as classes do costume. Isto é para o resto: uma mensagem
+   * desenhada em canvas, uma notificação do sistema, ou uma aplicação que prefere
+   * declarar a chave em vez de deixar adivinhar pelo texto. **A chave ganha sempre
+   * ao texto**: é estável, é independente do idioma e não arrasta dados nenhuns.
+   */
+  mensagem(chave: string, tipo: "erro" | "aviso" | "sucesso" | "info", extras?: Record<string, unknown>): void;
+  /**
+   * Declara um erro que **ninguém viu no ecrã** (RF-MSG-06).
+   *
+   * As falhas de rede e as respostas de erro do servidor já saem sozinhas. Isto é
+   * para o que a aplicação apanha e engole: uma promessa rejeitada, uma resposta
+   * ilegível, um passo que falhou em silêncio. São eles que explicam o abandono
+   * que não tem explicação nenhuma no ecrã.
+   */
+  erroTecnico(chave: string, propriedades?: Record<string, unknown>): void;
   /** Força o envio do que está na fila. */
   descarregar(): Promise<void>;
   /** Desliga tudo, sem deixar ouvintes atrás. */
@@ -195,6 +214,10 @@ export function iniciar(op: Opcoes): Uxda {
     // guardado: uma descida de nível a meio da sessão tem de fazer efeito já.
     nivel: () => nivelEfetivo(),
     emVoo: () => emVoo,
+    // RNF-PRI-04: mascaramento por omissão, e exposição só por lista explícita.
+    // A lista vem da configuração remota, e por isso é decisão da instituição e
+    // não de quem escreveu a aplicação.
+    mensagemExposta: (chave: string) => config.mensagensExpostas.includes(chave),
   };
 
   let ligacao: Ligacao | null = null;
@@ -293,6 +316,19 @@ export function iniciar(op: Opcoes): Uxda {
 
     terminal: protegido("uxda.terminal", (estado: "sucesso" | "erro" | "abandonado" | "expirado") => {
       ligacao?.terminal(estado);
+    }, undefined),
+
+    mensagem: protegido("uxda.mensagem", (chave: string, tipo: "erro" | "aviso" | "sucesso" | "info", extras?: Record<string, unknown>) => {
+      ligacao?.mensagem(String(chave).slice(0, 256), tipo, extras);
+    }, undefined),
+
+    erroTecnico: protegido("uxda.erroTecnico", (chave: string, propriedades?: Record<string, unknown>) => {
+      const props: Record<string, unknown> = { classe_erro: "sistema" };
+      const operacao = propriedades?.["operacao"];
+      if (operacao) props["operacao"] = String(operacao).slice(0, 32);
+      const codigo = propriedades?.["codigo_http"];
+      if (typeof codigo === "number") props["codigo_http"] = codigo;
+      ligacao?.mensagemTecnica(String(chave).slice(0, 256), props);
     }, undefined),
 
     descarregar: protegidoAsync("uxda.descarregar", async () => { await fila.descarregar(); }, undefined),

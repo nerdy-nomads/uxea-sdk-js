@@ -57,6 +57,20 @@ if (PROPRIEDADES_PERMITIDAS.size === 0) {
   throw new Error("esquema sem propriedades permitidas: o validador recusaria tudo");
 }
 
+/**
+ * As propriedades cujo valor é um resumo calculado no dispositivo sobre texto já
+ * mascarado.
+ *
+ * A guarda contra fugas recusa corridas de algarismos num valor de texto, e um
+ * resumo em hexadecimal tem-nas com frequência: `62431dbd` traz cinco algarismos
+ * seguidos e não traz informação nenhuma. Sem esta lista, a guarda recusava
+ * exatamente os valores que não podem transportar conteúdo, e foi o que aconteceu:
+ * quatro em cada cinco mensagens da bateria de volume do 5.4 nem chegaram a sair.
+ */
+const PROPRIEDADES_OPACAS = new Set(
+  ((esquema as any).propriedades_opacas?.chaves ?? []) as string[],
+);
+
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RE_RFC3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
 
@@ -90,7 +104,17 @@ function validarCampo(c: Campo, bruto: unknown): Erro | null {
       if (typeof bruto !== "object" || bruto === null || Array.isArray(bruto)) return e(CODIGOS.tipo, "esperava objeto");
       for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
         if (!PROPRIEDADES_PERMITIDAS.has(k)) return e(CODIGOS.valor, `propriedade ${JSON.stringify(k)} não está na lista de permitidas`);
-        if (typeof v === "string" && [...v].length > 64) return e(CODIGOS.tamanho, `propriedade ${JSON.stringify(k)} com mais de 64 caracteres: parece conteúdo`);
+        if (typeof v === "string") {
+          if ([...v].length > 64) return e(CODIGOS.tamanho, `propriedade ${JSON.stringify(k)} com mais de 64 caracteres: parece conteúdo`);
+          // A regra `sem_conteudo` diz, com todas as letras, que um valor de
+          // propriedade é número, booleano ou **texto curto sem dígitos longos**.
+          // A parte dos dígitos não estava imposta em lado nenhum: uma chave
+          // permitida com um número de documento lá dentro passava nos dois
+          // validadores, e é a forma mais provável de uma fuga entrar, porque a
+          // lista de chaves dá a sensação de já proteger.
+          const motivo = textoComConteudo(v);
+          if (motivo && !PROPRIEDADES_OPACAS.has(k)) return e(CODIGOS.valor, `propriedade ${JSON.stringify(k)}: ${motivo}`);
+        }
       }
       return null;
     }
@@ -105,7 +129,35 @@ function validarRegras(ev: Record<string, unknown>): Erro[] {
     if (!ev["message_kind"])
       out.push({ campo: "message_kind", codigo: CODIGOS.regra, motivo: "um evento de mensagem tem de trazer o tipo" });
   }
+  // A regra vale para **qualquer** evento que traga texto, e não só para os de
+  // tipo mensagem: um `erro` de validação com o texto do campo lá dentro seria
+  // exatamente a fuga que o RF-MSG-04 existe para impedir, e escapava a uma
+  // verificação presa ao tipo.
+  const texto = ev["message_text_masked"];
+  if (typeof texto === "string" && texto) {
+    const motivo = textoComConteudo(texto);
+    if (motivo) out.push({ campo: "message_text_masked", codigo: CODIGOS.regra, motivo });
+  }
   return out;
+}
+
+/**
+ * A contraprova da mascaragem do dispositivo (RF-MSG-04).
+ *
+ * O dispositivo promete que mascarou; isto verifica, e é a mesma verificação que a
+ * ingestão faz em Go. **Recusa em vez de mascarar**, de propósito: mascarar aqui
+ * deixava o defeito de quem enviou a passar em silêncio, e a fuga continuava a
+ * existir em todas as versões instaladas.
+ */
+export function textoComConteudo(texto: string): string {
+  for (const parte of texto.split(/\s+/)) {
+    const i = parte.indexOf("@");
+    if (i > 0 && parte.slice(i).includes(".")) return "texto com correio electrónico por mascarar";
+  }
+  // Quatro algarismos seguidos ainda pode ser um ano numa mensagem legítima;
+  // cinco já é uma referência, um montante ou um contacto.
+  if (/\d{5}/.test(texto)) return "texto com uma sequência de dígitos por mascarar";
+  return "";
 }
 
 /** Devolve **todos** os problemas, e não só o primeiro: quem integra corrige de uma vez. */

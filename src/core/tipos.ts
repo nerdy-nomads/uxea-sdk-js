@@ -74,6 +74,17 @@ export interface Configuracao {
    * a subir para toda a gente, que é o custo que o ADR 0010 existe para evitar.
    */
   amostragemDetalhado: number;
+  /**
+   * As chaves de mensagem que a instituição autorizou a sair por inteiro
+   * (RNF-PRI-04). Vazia por omissão: o mascaramento é o estado de repouso, e a
+   * exposição é que precisa de uma decisão de quem é responsável pelos dados.
+   *
+   * **E há um chão que a lista não levanta:** números, identificadores e correio
+   * electrónico saem sempre mascarados, autorize quem autorizar. Esses são os que
+   * nos punham em falta independentemente de quem os deixou passar, e a ingestão
+   * recusa o evento que os traga.
+   */
+  mensagensExpostas: string[];
   /** Que tipos de evento capturar. Vazio quer dizer todos os do nível. */
   captura: string[];
   /** Versão da configuração, para se saber qual estava em vigor. */
@@ -87,6 +98,7 @@ export const CONFIGURACAO_SEGURA: Configuracao = {
   amostragem: 1,
   nivel: "padrao",
   amostragemDetalhado: 0,
+  mensagensExpostas: [],
   captura: [],
   versao: 0,
 };

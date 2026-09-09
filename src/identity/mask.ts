@@ -77,3 +77,57 @@ export function resumo(texto: string): string {
   }
   return h.toString(16).padStart(8, "0");
 }
+
+/* ------------------------------------------------------------- mensagens */
+
+/**
+ * O que se tira de uma mensagem além dos números: o que a aplicação lá interpolou
+ * a partir do que a pessoa é ou escreveu.
+ *
+ * O `mascarar` acima cobre o RF-MSG-04 à letra, que fala de números, montantes,
+ * datas e identificadores. Só que uma mensagem real também traz **nomes** ("Olá
+ * Ana Maria, o pedido falhou") e **ecos do que foi escrito** ("O valor «abc» não é
+ * válido"), e nenhum deles é número nenhum. Sem estas duas regras, a bateria de
+ * fuga do cartão 5.4 apanhava conteúdo a sair dentro do texto de uma mensagem, que
+ * é precisamente o risco crítico que o documento nomeia.
+ *
+ * **A garantia total é a chave, e não isto.** Estas regras são heurísticas, e a
+ * direção do erro é a segura: mascaram a mais, nunca a menos. Por isso é que o
+ * RF-MSG-02 manda preferir a chave, e o `README` explica o ganho a quem integra.
+ */
+const REGRAS_MENSAGEM: ReadonlyArray<readonly [RegExp, string]> = [
+  // O que a aplicação cita é, quase sempre, o que a pessoa escreveu.
+  [/[“”«»"]([^“”«»"]{1,120})[“”«»"]/g, "{valor}"],
+  // Vocativo: o que vem a seguir a uma saudação é um nome, sempre.
+  [/\b(Olá|Ola|Caro|Cara|Exmo\.|Exma\.|Sr\.|Sra\.|Bem-vindo|Bem-vinda)([,]?\s+)\p{Lu}[\p{Ll}\p{M}]+/gu, "$1$2{nome}"],
+  // Duas ou mais palavras capitalizadas seguidas, com as partículas pelo meio:
+  // "Ana Maria da Silva". Uma só não se toca, senão "Multicaixa" e "Kwanza"
+  // desapareciam e o catálogo deixava de se perceber.
+  [/\b\p{Lu}[\p{Ll}\p{M}]+(?:\s+(?:d[aeoi]s?|e|von|van|del)\s+\p{Lu}[\p{Ll}\p{M}]+|\s+\p{Lu}[\p{Ll}\p{M}]+)+/gu, "{nome}"],
+];
+
+/** Mascara uma mensagem de sistema, no dispositivo e antes de qualquer envio. */
+export function mascararMensagem(texto: string): string {
+  let saida = texto.replace(/\s+/g, " ").trim();
+  for (const [re, marcador] of REGRAS_MENSAGEM) saida = saida.replace(re, marcador);
+  return mascarar(saida);
+}
+
+/**
+ * A chave de agrupamento por semelhança (RF-MSG-03).
+ *
+ * Duas variantes da mesma mensagem já têm a mesma chave depois de mascaradas, e
+ * isso resolve a fragmentação por valores. O que **não** resolve é a mesma
+ * mensagem reescrita: "O saldo é insuficiente" e "O saldo de {numero} Kz é
+ * insuficiente" são duas entradas no catálogo, e são o mesmo problema.
+ *
+ * O esqueleto tira os marcadores e as palavras curtas, e fica com o que a mensagem
+ * diz. As duas de cima dão `saldo insuficiente`, e caem no mesmo grupo.
+ */
+export function esqueletoDeMensagem(mascarada: string): string {
+  const palavras = normalizarTexto(mascarada)
+    .replace(/\{[a-z]+\}/g, " ")
+    .split(/[^\p{L}]+/u)
+    .filter((p) => p.length >= 4);
+  return palavras.slice(0, 8).join(" ");
+}
