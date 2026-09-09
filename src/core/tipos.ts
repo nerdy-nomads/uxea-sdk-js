@@ -66,6 +66,14 @@ export interface Configuracao {
   amostragem: number;
   /** Nível de captura do ADR 0010. */
   nivel: "essencial" | "padrao" | "detalhado";
+  /**
+   * Que fração dos utilizadores sobe ao nível detalhado (RF-GRA-27).
+   *
+   * É uma coisa diferente da `amostragem`: aquela decide **se** a pessoa é
+   * medida, esta decide **com que detalhe**. Com uma só, subir o detalhe obrigava
+   * a subir para toda a gente, que é o custo que o ADR 0010 existe para evitar.
+   */
+  amostragemDetalhado: number;
   /** Que tipos de evento capturar. Vazio quer dizer todos os do nível. */
   captura: string[];
   /** Versão da configuração, para se saber qual estava em vigor. */
@@ -78,6 +86,7 @@ export const CONFIGURACAO_SEGURA: Configuracao = {
   // quem opera, nunca um acidente de rede.
   amostragem: 1,
   nivel: "padrao",
+  amostragemDetalhado: 0,
   captura: [],
   versao: 0,
 };

@@ -102,6 +102,17 @@ export function iniciar(op: Opcoes): Uxda {
   let config: Configuracao = CONFIGURACAO_SEGURA;
   let origemConfig = "omissao";
   let amostrado = true;
+  /**
+   * Quem está na amostra do detalhado sobe de nível, e **está sempre**.
+   *
+   * A amostragem é determinística, por resumo do identificador anónimo, e não
+   * aleatória por sessão: com aleatória, a mesma pessoa entra e sai da amostra e
+   * as tentativas dela ficam com buracos, e uma tentativa com buracos deixa de
+   * significar o que quer que seja (ADR 0010).
+   */
+  let noDetalhe = false;
+  const nivelEfetivo = (): "essencial" | "padrao" | "detalhado" =>
+    noDetalhe && config.nivel !== "essencial" ? "detalhado" : config.nivel;
 
   // A escrita da fila sai do caminho do evento: junta-se em memória e grava-se
   // uma vez por lote de cem milissegundos. O fecho da página força a escrita.
@@ -147,7 +158,7 @@ export function iniciar(op: Opcoes): Uxda {
       app_version: String(versaoApp),
       platform: "web",
       identity_scope: "aplicacao",
-      capture_level: config.nivel,
+      capture_level: nivelEfetivo(),
     };
     if (ident.utilizador) ev.user_id = ident.utilizador;
     for (const [k, v] of Object.entries(extras)) {
@@ -182,7 +193,7 @@ export function iniciar(op: Opcoes): Uxda {
     ecra: () => ecraForcado || ecraDe(),
     // O nível vem da configuração remota, e por isso é lido a cada evento e não
     // guardado: uma descida de nível a meio da sessão tem de fazer efeito já.
-    nivel: () => config.nivel,
+    nivel: () => nivelEfetivo(),
     emVoo: () => emVoo,
   };
 
@@ -199,6 +210,9 @@ export function iniciar(op: Opcoes): Uxda {
     // tentativa nunca fica com metade dos passos.
     amostrado = naAmostra(ident.anonimo, config.amostragem);
     if (!amostrado) return;
+    // Sementes diferentes: quem está na amostra de ser medido não tem de ser a
+    // mesma gente que está na amostra do detalhe.
+    noDetalhe = naAmostra("detalhado:" + ident.anonimo, config.amostragemDetalhado);
     if (op.automatico !== false) {
       ligacao = ligarCaptura(janela, documento, nucleo);
       ligacaoRede = ligarRede(janela, nucleo, servidor, {

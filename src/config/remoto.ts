@@ -47,7 +47,9 @@ export function normalizar(c: any): Configuracao {
   const nivel = c?.nivel === "essencial" || c?.nivel === "detalhado" ? c.nivel : "padrao";
   const captura = Array.isArray(c?.captura) ? c.captura.filter((x: unknown) => typeof x === "string") : [];
   const versao = typeof c?.versao === "number" ? c.versao : 0;
-  return { amostragem, nivel, captura, versao };
+  const amostragemDetalhado = Math.min(1, Math.max(0,
+    typeof c?.amostragem_detalhado === "number" ? c.amostragem_detalhado : 0));
+  return { amostragem, nivel, captura, versao, amostragemDetalhado };
 }
 
 /**
