@@ -20,8 +20,13 @@ const PAGINA = `
   </form>
 `;
 
-async function comSdk(html = PAGINA) {
+async function comSdk(html = PAGINA, nivel: "essencial" | "padrao" | "detalhado" = "padrao") {
   const br = criarBrowser(html, { caminho: "/checkout" });
+  if (nivel !== "padrao") {
+    br.responder((p) => p.url.includes("/v1/config")
+      ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, captura: [], versao: 1 } }) }
+      : { estado: 202, corpo: "{}" });
+  }
   const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   return { br, uxda };
@@ -50,12 +55,15 @@ test("2.1 o ambiente sai do prefixo da chave", () => {
 });
 
 test("2.2 os dez tipos do RF-CAP-04 saem sem uma linha de instrumentação", async () => {
-  const { br, uxda } = await comSdk();
+  // No nível **detalhado**, que é o que mantém a sequência completa. No padrão a
+  // tecla e o desfoco vivem dentro do agregado por campo, e o ensaio do 4.5
+  // fixa essa diferença.
+  const { br, uxda } = await comSdk(PAGINA, "detalhado");
 
   disparar(br.documento, "#pagar", "click");
   disparar(br.documento, "#nome", "focusin");
   await br.avancar(1200);
-  disparar(br.documento, "#nome", "keydown", { key: "a" });
+  disparar(br.documento, "#nome", "input", { inputType: "insertText" });
   disparar(br.documento, "#nome", "focusout");
   disparar(br.documento, "#f", "submit");
   disparar(br.documento, "#nome", "invalid");
@@ -81,6 +89,42 @@ test("2.2 os dez tipos do RF-CAP-04 saem sem uma linha de instrumentação", asy
   for (const t of ["ecra", "toque", "foco", "tecla", "desfoco", "submissao", "erro", "recuo", "plano_fundo"]) {
     assert.ok(tipos.has(t), `faltou o tipo ${t}: saíram ${[...tipos].join(", ")}`);
   }
+});
+
+test("4.5 o nível padrão emite um evento por campo, e não um por tecla", async () => {
+  // É o RF-GRA-29, e é o requisito que decide se o produto é vendável: a captura
+  // granular multiplica o volume, e a agregação no dispositivo é a mitigação
+  // nomeada no documento. O que se fixa aqui é a diferença entre os dois níveis.
+  const guiao = async (nivel: "padrao" | "detalhado") => {
+    const { br, uxda } = await comSdk(PAGINA, nivel);
+    disparar(br.documento, "#nome", "focusin");
+    await br.avancar(900);
+    disparar(br.documento, "#nome", "input", { inputType: "insertText" });
+    disparar(br.documento, "#nome", "input", { inputType: "insertText" });
+    disparar(br.documento, "#nome", "input", { inputType: "deleteContentBackward" });
+    disparar(br.documento, "#nome", "focusout");
+    await uxda.descarregar();
+    await br.avancar(20000);
+    return br.eventos();
+  };
+
+  const padrao = await guiao("padrao");
+  const porTipo = (evs: any[], t: string) => evs.filter((e) => e.event_type === t);
+
+  assert.equal(porTipo(padrao, "campo").length, 1, "um evento por campo, e um só");
+  assert.equal(porTipo(padrao, "tecla").length, 0, "no padrão não sai um evento por tecla");
+  assert.equal(porTipo(padrao, "desfoco").length, 0, "o desfoco está dentro do agregado");
+
+  const campo = porTipo(padrao, "campo")[0]!;
+  assert.equal(campo.properties.caracteres_escritos, 2);
+  assert.equal(campo.properties.caracteres_apagados, 1);
+  assert.equal(campo.properties.hesitacao_ms, 900, "a hesitação vai no agregado");
+
+  // Três teclas deram **um** evento. É esta a conta que o RF-GRA-29 protege.
+  const detalhado = await guiao("detalhado");
+  assert.equal(porTipo(detalhado, "campo").length, 1);
+  assert.ok(porTipo(detalhado, "tecla").length >= 1, "o detalhado mantém a sequência completa");
+  assert.equal(porTipo(detalhado, "desfoco").length, 1);
 });
 
 test("3.1 o plano de fundo leva o tempo que a página esteve mesmo à vista", async () => {
@@ -115,19 +159,22 @@ test("3.1 o plano de fundo leva o tempo que a página esteve mesmo à vista", as
 });
 
 test("2.2 a hesitação é medida, e a tecla escrita nunca é lida", async () => {
+  // A hesitação é o intervalo entre o foco e a **primeira alteração do texto**, e
+  // não a primeira tecla premida: um teclado virtual não envia teclas, e o `Tab`
+  // ou o `Shift` não são escrever. É o mesmo sinal que o SDK Android usa.
   const { br, uxda } = await comSdk();
   disparar(br.documento, "#nome", "focusin");
   await br.avancar(2500);
-  disparar(br.documento, "#nome", "keydown", { key: "s" });
+  disparar(br.documento, "#nome", "input", { inputType: "insertText", data: "s" });
   disparar(br.documento, "#nome", "focusout");
   await uxda.descarregar();
   await br.avancar(20000);
 
-  const tecla = br.eventos().find((e) => e.event_type === "tecla")!;
-  assert.ok(tecla, "não saiu evento de tecla");
-  assert.equal(tecla.duration_ms, 2500, "a hesitação não foi medida");
+  const campo = br.eventos().find((e) => e.event_type === "campo")!;
+  assert.ok(campo, "não saiu o agregado do campo");
+  assert.equal(campo.properties.hesitacao_ms, 2500, "a hesitação não foi medida");
   const bruto = JSON.stringify(br.eventos());
-  assert.ok(!bruto.includes('"key"') && !bruto.includes('"s"'), "a tecla escrita apareceu no que sai");
+  assert.ok(!bruto.includes('"data"') && !bruto.includes('"s"'), "o que foi escrito apareceu no que sai");
 });
 
 test("2.2 `track` marca o que a captura automática não alcança", async () => {

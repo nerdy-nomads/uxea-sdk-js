@@ -56,9 +56,20 @@ test("2.6 configuração absurda não passa: os valores são normalizados", () =
 test("2.6 a lista remota manda sobre o nível", () => {
   assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, captura: ["ecra"] }, "ecra"), true);
   assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, captura: ["ecra"] }, "toque"), false);
-  assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, nivel: "essencial" }, "toque"), false);
+  // O toque está no essencial, e é o ADR 0010 que o põe lá: sem ele não há
+  // sequência nenhuma, e o essencial deixaria de servir para medir o que quer que
+  // fosse. O que o essencial corta é o que multiplica o volume.
+  assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, nivel: "essencial" }, "toque"), true);
+  assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, nivel: "essencial" }, "foco"), false);
   assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, nivel: "essencial" }, "erro"), true);
-  assert.equal(capturaTipo(CONFIGURACAO_SEGURA, "tecla"), true);
+  // O padrão traz o agregado por campo e **não** traz a tecla: é o RF-GRA-29, e
+  // é a diferença entre um evento por campo e um evento por tecla. A sequência
+  // completa fica para o detalhado, que corre por amostragem.
+  assert.equal(capturaTipo(CONFIGURACAO_SEGURA, "campo"), true);
+  assert.equal(capturaTipo(CONFIGURACAO_SEGURA, "tecla"), false);
+  assert.equal(capturaTipo(CONFIGURACAO_SEGURA, "toque_sem_alvo"), true);
+  assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, nivel: "detalhado" }, "tecla"), true);
+  assert.equal(capturaTipo({ ...CONFIGURACAO_SEGURA, nivel: "essencial" }, "campo"), false);
 });
 
 test("2.6 baixar a amostragem faz efeito na sessão seguinte, sem publicar nada", async () => {

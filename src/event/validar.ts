@@ -39,10 +39,23 @@ export const CODIGOS = {
 const CAMPOS = esquema.campos as unknown as Campo[];
 const POR_NOME = new Map(CAMPOS.map((c) => [c.nome, c]));
 
-/** As mesmas da lista do `uxda-core`. Tudo o resto é recusado, e não ignorado. */
-const PROPRIEDADES_PERMITIDAS = new Set([
-  "valor_monetario", "moeda", "tipo_utilizador", "segmento", "canal", "campanha", "experiencia",
-]);
+/**
+ * As propriedades permitidas vêm do **esquema**, e não de uma lista escrita aqui.
+ *
+ * Estavam escritas duas vezes, uma em Go e outra aqui, e uma chave acrescentada de
+ * um lado só passava a ser recusada pelo outro sem ninguém dar por isso: o SDK
+ * considerava válido o que a ingestão deitava fora. Tudo o que não está na lista é
+ * recusado, e não ignorado.
+ */
+const PROPRIEDADES_PERMITIDAS = new Set(
+  Object.entries((esquema as any).propriedades_permitidas ?? {})
+    .filter(([nome]) => !nome.startsWith("$"))
+    .flatMap(([, grupo]) => (grupo as { chaves: string[] }).chaves),
+);
+
+if (PROPRIEDADES_PERMITIDAS.size === 0) {
+  throw new Error("esquema sem propriedades permitidas: o validador recusaria tudo");
+}
 
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RE_RFC3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;

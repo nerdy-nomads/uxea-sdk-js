@@ -19,8 +19,38 @@ function nosso(url: string, servidor: string): boolean {
   return !!servidor && url.startsWith(servidor);
 }
 
-export function ligarRede(janela: any, nucleo: Nucleo, servidor: string): { desligar(): void } {
+/**
+ * O que se quer saber de cada pedido além de ele ter falhado: que ele começou,
+ * que acabou, e quanto tempo levou. É com isto que se separa o **tempo de espera
+ * imposto pelo sistema** do tempo de decisão da pessoa (RF-GRA-21), e é com isto
+ * que se sabe que um toque foi dado com a aplicação ocupada (RF-GRA-05).
+ */
+export interface ObservadorDePedidos {
+  inicio(): void;
+  fim(duracaoMs: number): void;
+}
+
+export function ligarRede(
+  janela: any,
+  nucleo: Nucleo,
+  servidor: string,
+  observador?: ObservadorDePedidos,
+): { desligar(): void } {
   const desligadores: Array<() => void> = [];
+
+  // Envolve um pedido para o contar enquanto está em voo. O `fim` corre sempre,
+  // com sucesso ou sem ele: um contador de pedidos em voo que não desce é um
+  // contador que passa a dizer que a aplicação está ocupada para sempre.
+  const emVoo = <T>(nosso: () => Promise<T>): Promise<T> => {
+    if (!observador) return nosso();
+    const inicio = nucleo.agora();
+    observador.inicio();
+    const fim = () => observador.fim(Math.max(0, nucleo.agora() - inicio));
+    return nosso().then(
+      (r) => { fim(); return r; },
+      (e) => { fim(); throw e; },
+    );
+  };
 
   const anotar = (url: string, estado: number) => {
     try {
@@ -43,7 +73,7 @@ export function ligarRede(janela: any, nucleo: Nucleo, servidor: string): { desl
     const embrulhado = async function (this: any, ...args: any[]) {
       const url = String(args[0]?.url ?? args[0] ?? "");
       try {
-        const r = await fetchOriginal.apply(this, args as any);
+        const r: any = await emVoo<any>(() => fetchOriginal.apply(this, args as any));
         // 5xx é falha do servidor; 4xx é a aplicação a dizer que não, e isso é
         // comportamento normal que não se marca como avaria.
         if (r && r.status >= 500) anotar(url, r.status);

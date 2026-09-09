@@ -53,6 +53,21 @@ export interface Uxda {
   esquecer(): void;
   /** Declara um ecrã, quando a aplicação não muda o URL ao mudar de vista. */
   ecra(nome: string): void;
+  /**
+   * Declara uma transição de passo dentro da tarefa (RF-GRA-20).
+   *
+   * Uma mudança de ecrã já conta como passo sozinha. Isto é para os fluxos que
+   * acontecem no mesmo ecrã, que são a maioria dos assistentes por etapas.
+   */
+  passo(nome: string): void;
+  /**
+   * Fecha a tentativa, sem ambiguidade (RF-GRA-23).
+   *
+   * O `abandonado` sai sozinho quando a página morre com trabalho a meio, e o
+   * `expirado` é normalmente do motor, que é quem conhece o limiar da tarefa.
+   * Sem isto, o abandono e a conclusão misturam-se e todas as taxas ficam erradas.
+   */
+  terminal(estado: "sucesso" | "erro" | "abandonado" | "expirado"): void;
   /** Força o envio do que está na fila. */
   descarregar(): Promise<void>;
   /** Desliga tudo, sem deixar ouvintes atrás. */
@@ -156,10 +171,19 @@ export function iniciar(op: Opcoes): Uxda {
     if (t0) est.msFio += janela.performance.now() - t0;
   };
 
+  // Pedidos da aplicação anfitriã em voo. É o que deixa dizer que um toque foi
+  // dado **enquanto o sistema estava ocupado** (RF-GRA-05), que é uma coisa
+  // diferente de um toque que não deu nada.
+  let emVoo = 0;
+
   const nucleo: Nucleo = {
     emitir: protegido("captura.emitir", emitirCru, undefined),
     agora: () => amb.agora(),
     ecra: () => ecraForcado || ecraDe(),
+    // O nível vem da configuração remota, e por isso é lido a cada evento e não
+    // guardado: uma descida de nível a meio da sessão tem de fazer efeito já.
+    nivel: () => config.nivel,
+    emVoo: () => emVoo,
   };
 
   let ligacao: Ligacao | null = null;
@@ -177,7 +201,15 @@ export function iniciar(op: Opcoes): Uxda {
     if (!amostrado) return;
     if (op.automatico !== false) {
       ligacao = ligarCaptura(janela, documento, nucleo);
-      ligacaoRede = ligarRede(janela, nucleo, servidor);
+      ligacaoRede = ligarRede(janela, nucleo, servidor, {
+        inicio: () => { emVoo++; },
+        fim: (ms) => {
+          emVoo = Math.max(0, emVoo - 1);
+          // Abaixo de meio segundo ninguém espera por nada, e emitir um evento
+          // por cada pedido rápido era trocar o volume que o 4.5 poupou.
+          if (ms >= 500) ligacao?.espera(ms);
+        },
+      });
     }
     // Primeiro ecrã: o que a pessoa viu ao chegar.
     nucleo.emitir("ecra", {});
@@ -239,6 +271,14 @@ export function iniciar(op: Opcoes): Uxda {
     ecra: protegido("uxda.ecra", (nome: string) => {
       ecraForcado = String(nome).slice(0, 256);
       emitirCru("ecra", { screen_key: ecraForcado });
+    }, undefined),
+
+    passo: protegido("uxda.passo", (nome: string) => {
+      ligacao?.passo(String(nome).slice(0, 64));
+    }, undefined),
+
+    terminal: protegido("uxda.terminal", (estado: "sucesso" | "erro" | "abandonado" | "expirado") => {
+      ligacao?.terminal(estado);
     }, undefined),
 
     descarregar: protegidoAsync("uxda.descarregar", async () => { await fila.descarregar(); }, undefined),

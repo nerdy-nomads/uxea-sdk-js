@@ -14,6 +14,10 @@
  *   plano_fundo  a aplicação deixou de estar à vista
  *   erro_rede    um pedido da aplicação falhou
  *
+ * E, desde o cartão 4.1, a captura granular da secção 4.16, que vive em três
+ * módulos ao lado: `toques.ts` (o que se tentou e não deu), `campos.ts` (como se
+ * preenche, sem saber o quê) e `progressao.ts` (passos, esperas e o fim).
+ *
  * **Nada aqui lê o que a pessoa escreveu.** Mede-se quando tocou, quanto tempo
  * esteve, quantas vezes voltou. O conteúdo do campo não é lido em sítio nenhum,
  * e há um ensaio de fuga que o prova (RNF-PRI-01).
@@ -23,6 +27,9 @@ import { protegido } from "../safe.ts";
 import type { ElementoLike } from "../identity/element.ts";
 import { normalizarDestino } from "../identity/element.ts";
 import { serializar } from "../identidade/elemento.ts";
+import { ligarToques } from "./toques.ts";
+import { ligarCampos } from "./campos.ts";
+import { ligarProgressao, type EstadoTerminal } from "./progressao.ts";
 
 export interface Emissor {
   (tipo: string, extras?: Record<string, unknown>): void;
@@ -33,6 +40,10 @@ export interface Nucleo {
   agora(): number;
   /** O ecrã atual, para os eventos que não trazem elemento. */
   ecra(): string;
+  /** O nível de captura em vigor, que decide o que sai e o que não sai. */
+  nivel?(): "essencial" | "padrao" | "detalhado";
+  /** Pedidos da aplicação em voo, para saber se ela está ocupada. */
+  emVoo?(): number;
 }
 
 /**
@@ -51,17 +62,17 @@ export function chaveDeEcra(caminho: string, hash = ""): string {
   return `${base}#${normalizarDestino("/" + rota.replace(/^\//, "")) ?? ""}`.replace("#/", "#/");
 }
 
-interface EstadoCampo {
-  focadoEm: number;
-  jaEscreveu: boolean;
-  chave: string;
-}
-
 export interface Ligacao {
   /** A página deixou de estar à vista: emite o `plano_fundo` com o tempo ativo. */
   esconder(): void;
   /** E voltou: o relógio do tempo à vista recomeça. */
   mostrar(): void;
+  /** Uma transição de passo declarada pela aplicação (RF-GRA-20). */
+  passo(nome: string): void;
+  /** Uma espera imposta pelo sistema, que não é hesitação de ninguém. */
+  espera(ms: number): void;
+  /** O fim da tentativa, sem ambiguidade (RF-GRA-23). */
+  terminal(estado: EstadoTerminal): void;
   desligar(): void;
 }
 
@@ -71,7 +82,6 @@ export interface Ligacao {
  */
 export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
   const desligadores: Array<() => void> = [];
-  const campos = new WeakMap<object, EstadoCampo>();
 
   // **Cada ouvinte vai dentro da barreira**, e não só o que ele emite. Um erro
   // dentro de um ouvinte de `click` sobe pelo despacho do evento e vai parar ao
@@ -91,6 +101,30 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     return c.principal ? serializar(c) : undefined;
   };
 
+  /* ------------------------------------------------------ captura granular */
+
+  const nivel = () => nucleo.nivel?.() ?? "padrao";
+  const detalhado = () => nivel() === "detalhado";
+  const essencial = () => nivel() === "essencial";
+
+  const campos = ligarCampos(janela, documento, {
+    emitir: nucleo.emitir, agora: nucleo.agora, chaveDe, detalhado, essencial,
+  });
+
+  const toques = ligarToques(janela, documento, {
+    emitir: nucleo.emitir, agora: nucleo.agora, chaveDe, detalhado,
+    emVoo: () => nucleo.emVoo?.() ?? 0,
+  });
+
+  const progressao = ligarProgressao(janela, documento, {
+    emitir: nucleo.emitir, agora: nucleo.agora, essencial,
+    campoDeAbandono: () => campos.campoDeAbandono(),
+  });
+
+  desligadores.push(() => campos.desligar());
+  desligadores.push(() => toques.desligar());
+  desligadores.push(() => progressao.desligar());
+
   /* ------------------------------------------------------------------ ecrã */
 
   let ecraAtual = "";
@@ -101,6 +135,10 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     if (nova === ecraAtual && motivo !== "recuo") return;
     ecraAtual = nova;
     nucleo.emitir(motivo === "recuo" ? "recuo" : "ecra", { screen_key: nova });
+    // Um ecrã novo é um passo novo, e é onde a contagem até à primeira interação
+    // recomeça: o RF-GRA-08 mede-a por ecrã, e não por sessão.
+    toques.ecraNovo();
+    progressao.passo(nova);
   };
 
   // Uma aplicação de página única não recarrega: a navegação é uma chamada ao
@@ -158,54 +196,34 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     nucleo.emitir("toque", { element_key: chaveDe(el) });
   });
 
-  ouvir(documento, "focusin", (e: any) => {
-    const el = e?.target;
-    if (!el || !ehCampo(el)) return;
-    const c = chaveDe(el);
-    campos.set(el, { focadoEm: nucleo.agora(), jaEscreveu: false, chave: c ?? "" });
-    nucleo.emitir("foco", { element_key: c });
-  });
-
-  ouvir(documento, "keydown", (e: any) => {
-    const el = e?.target;
-    if (!el || !ehCampo(el)) return;
-    const est = campos.get(el);
-    if (!est || est.jaEscreveu) return;
-    est.jaEscreveu = true;
-    // A hesitação: quanto tempo esteve com o campo à frente antes de escrever.
-    // O que **não** vai aqui é a tecla: `e.key` nunca é lido.
-    nucleo.emitir("tecla", {
-      element_key: est.chave || chaveDe(el),
-      duration_ms: Math.max(0, Math.round(nucleo.agora() - est.focadoEm)),
-    });
-  });
-
-  ouvir(documento, "focusout", (e: any) => {
-    const el = e?.target;
-    if (!el || !ehCampo(el)) return;
-    const est = campos.get(el);
-    campos.delete(el);
-    nucleo.emitir("desfoco", {
-      element_key: est?.chave || chaveDe(el),
-      duration_ms: est ? Math.max(0, Math.round(nucleo.agora() - est.focadoEm)) : undefined,
-    });
-  });
+  // O foco, a tecla e o desfoco são agora do `campos.ts`, que os agrega num
+  // evento por campo em vez de três por campo. O que ficou aqui era, à letra, o
+  // que o RF-GRA-29 manda não fazer.
 
   /* ---------------------------------------------------- formulário e erros */
 
   ouvir(documento, "submit", (e: any) => {
-    nucleo.emitir("submissao", { element_key: chaveDe(e?.target) });
+    // O retrato de cada campo sai primeiro, e a contagem vai no próprio evento
+    // de submissão: quem olha para a submissão vê logo se ela foi feita com
+    // metade do formulário vazio.
+    const contagem = campos.aoSubmeter(e?.target);
+    nucleo.emitir("submissao", {
+      element_key: chaveDe(e?.target),
+      properties: {
+        campos_preenchidos: contagem.preenchidos,
+        campos_vazios: contagem.vazios,
+        campos_com_erro: contagem.com_erro,
+      },
+    });
   });
 
   // `invalid` é o que o browser dispara quando a validação nativa recusa um
   // campo. Guarda-se **que** campo falhou, e nunca a mensagem, que costuma trazer
   // o valor escrito lá dentro.
   ouvir(documento, "invalid", (e: any) => {
-    nucleo.emitir("erro", {
-      element_key: chaveDe(e?.target),
-      message_key: "validacao_nativa",
-      message_kind: "erro",
-    });
+    // Quem conta as tentativas até resolver é o `campos.ts`, que sabe quantas
+    // vezes aquele campo já falhou nesta tentativa (RF-GRA-17).
+    campos.aoErrar(e?.target, "validacao_nativa");
   });
 
   /* ------------------------------------------------------------ ciclo de vida */
@@ -229,11 +247,21 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     esconder() {
       if (aVistaDesde > 0) tempoAtivoMs += Math.max(0, Math.round(nucleo.agora() - aVistaDesde));
       aVistaDesde = 0;
+      toques.fechar();
+      campos.esconder();
       nucleo.emitir("plano_fundo", { duration_ms: tempoAtivoMs });
+      // O abandono marca-se **depois** do plano de fundo, e é de propósito: a
+      // ordem no armazenamento passa a ser a ordem em que as coisas aconteceram.
+      progressao.esconder();
     },
     mostrar() {
       if (aVistaDesde === 0) aVistaDesde = nucleo.agora();
+      campos.mostrar();
+      progressao.mostrar();
     },
+    passo: (nome: string) => progressao.passo(nome),
+    espera: (ms: number) => progressao.espera(ms),
+    terminal: (estado: EstadoTerminal) => progressao.terminal(estado),
     desligar() {
       for (const d of desligadores.splice(0)) {
         try { d(); } catch { /* desligar não pode falhar */ }
@@ -242,10 +270,3 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
   };
 }
 
-function ehCampo(el: any): boolean {
-  const tag = String(el?.tagName ?? "").toUpperCase();
-  if (tag === "TEXTAREA" || tag === "SELECT") return true;
-  if (tag !== "INPUT") return el?.isContentEditable === true;
-  const tipo = String(el.getAttribute?.("type") ?? "text").toLowerCase();
-  return tipo !== "hidden" && tipo !== "submit" && tipo !== "button";
-}

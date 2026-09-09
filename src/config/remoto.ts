@@ -74,10 +74,34 @@ export async function obter(amb: Ambiente, servidor: string, chave: string): Pro
   return { config: CONFIGURACAO_SEGURA, origem: "omissao" };
 }
 
-/** Os tipos que o nível deixa passar, quando a lista remota está vazia. */
+/**
+ * O que cada nível deixa passar. ADR 0010, RF-GRA-26.
+ *
+ * A lista é explícita e não uma regra: um nível que se define por exclusão passa
+ * a deixar entrar, sozinho, tudo o que alguém acrescentar ao SDK daqui a um ano, e
+ * o volume cresce sem ninguém ter decidido nada.
+ *
+ * O `padrao` é o que quase toda a gente vai ter. Repare-se no que está lá e no que
+ * não está: está o **agregado por campo**, e não estão a tecla nem o desfoco. É o
+ * RF-GRA-29 inteiro, e é o que decide se o produto é vendável.
+ */
+const ESSENCIAL = [
+  "ecra", "toque", "submissao", "erro", "erro_rede", "mensagem", "terminal",
+];
+
+const PADRAO = [
+  ...ESSENCIAL,
+  "foco", "campo",
+  "toque_sem_alvo", "toque_desativado", "toque_repetido", "toque_em_carregamento",
+  "primeira_interacao", "passo", "espera", "ambiente",
+  "plano_fundo", "recuo", "personalizado",
+];
+
 export function tiposDoNivel(nivel: Configuracao["nivel"]): string[] {
-  if (nivel === "essencial") return ["ecra", "submissao", "erro", "erro_rede"];
-  if (nivel === "detalhado") return [];
+  if (nivel === "essencial") return ESSENCIAL;
+  if (nivel === "padrao") return PADRAO;
+  // O detalhado é o padrão mais a sequência completa: tecla, desfoco e as
+  // coordenadas dos toques. Lista vazia quer dizer "tudo o que o SDK produzir".
   return [];
 }
 
