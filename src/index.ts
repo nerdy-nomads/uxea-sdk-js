@@ -20,6 +20,7 @@ import { Armazem } from "./fila/armazem.ts";
 import { Fila, LIMITES, VERSAO, limitesPara } from "./fila/fila.ts";
 import { identidade, guardarUtilizador, pseudonimizar, type Identidade } from "./identidade/anonimo.ts";
 import { ligar as ligarCaptura, chaveDeEcra, type Ligacao, type Nucleo } from "./captura/captura.ts";
+import { contextoDe } from "./captura/contexto.ts";
 import { ligarRede } from "./captura/rede.ts";
 import { capturaTipo, obter as obterConfig } from "./config/remoto.ts";
 import { validar } from "./event/validar.ts";
@@ -153,6 +154,11 @@ export function iniciar(op: Opcoes): Uxda {
     limitesPara(janela?.navigator?.connection),
   );
 
+  // O contexto do dispositivo lê-se **uma vez**, e não a cada evento: nada nele muda
+  // dentro de uma sessão, e ler o agente e o `Intl` vinte vezes por segundo era
+  // pagar um custo por um valor constante.
+  const ctx = contextoDe(janela);
+
   const versaoApp = op.versao
     ?? documento?.querySelector?.('meta[name="uxda:version"]')?.getAttribute?.("content")
     ?? "0.0.0";
@@ -178,6 +184,7 @@ export function iniciar(op: Opcoes): Uxda {
       platform: "web",
       identity_scope: "aplicacao",
       capture_level: nivelEfetivo(),
+      ...ctx,
     };
     if (ident.utilizador) ev.user_id = ident.utilizador;
     for (const [k, v] of Object.entries(extras)) {

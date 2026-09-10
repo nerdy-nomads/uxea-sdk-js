@@ -138,7 +138,27 @@ function validarRegras(ev: Record<string, unknown>): Erro[] {
     const motivo = textoComConteudo(texto);
     if (motivo) out.push({ campo: "message_text_masked", codigo: CODIGOS.regra, motivo });
   }
+  // A geografia deste produto é o fuso, e é grosseira por construção (ADR 0022).
+  // Sem esta regra o campo aceitava um par de coordenadas, e passava a ser a porta
+  // por onde a localização exata entrava sem ninguém a ter pedido.
+  const fuso = ev["time_zone"];
+  if (typeof fuso === "string" && fuso && !pareceFuso(fuso)) {
+    out.push({ campo: "time_zone", codigo: CODIGOS.regra, motivo: "não é um fuso IANA: esperava Area/Local, como Europe/Lisbon, ou UTC" });
+  }
   return out;
+}
+
+/**
+ * Aceita `Area/Local`, `Area/Sub/Local` e os dois nomes sem barra que existem de
+ * facto. Recusa tudo o resto, e em particular qualquer coisa com um ponto decimal
+ * ou uma vírgula, que é a forma que um par de coordenadas tem.
+ */
+export function pareceFuso(s: string): boolean {
+  if (s === "UTC" || s === "GMT" || s === "Z") return true;
+  const barras = (s.match(/\//g) ?? []).length;
+  if (s.length > 64 || barras < 1 || barras > 2) return false;
+  if (!/^[A-Z]/.test(s)) return false;
+  return /^[A-Za-z][A-Za-z0-9_/+-]*$/.test(s);
 }
 
 /**
