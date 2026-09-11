@@ -220,6 +220,7 @@ export function iniciar(op: Opcoes): Uxda {
     // O nível vem da configuração remota, e por isso é lido a cada evento e não
     // guardado: uma descida de nível a meio da sessão tem de fazer efeito já.
     nivel: () => nivelEfetivo(),
+    individual: () => config.rastreioIndividual,
     emVoo: () => emVoo,
     // RNF-PRI-04: mascaramento por omissão, e exposição só por lista explícita.
     // A lista vem da configuração remota, e por isso é decisão da instituição e
@@ -256,7 +257,14 @@ export function iniciar(op: Opcoes): Uxda {
       });
     }
     // Primeiro ecrã: o que a pessoa viu ao chegar.
-    nucleo.emitir("ecra", {});
+    //
+    // **Pela captura quando ela existe**, e não com um `emitir` direto: é ela que
+    // diz ao deslocamento que um ecrã começou, e sem isso o primeiro ecrã de cada
+    // sessão nunca media profundidade nenhuma (cartão 9.1). Sem captura
+    // automática, o evento sai na mesma: quem desliga o `automatico` continua a
+    // ter o ecrã de chegada.
+    if (ligacao) ligacao.ecraInicial();
+    else nucleo.emitir("ecra", {});
     // O fim da página é o momento em que mais se perde: é aqui que estão o
     // abandono e a desistência, e é a última oportunidade de os entregar.
     // **A ordem é o que faz o evento chegar.** O `plano_fundo` entra na fila

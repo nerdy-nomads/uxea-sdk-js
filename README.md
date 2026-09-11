@@ -228,8 +228,29 @@ distribuído por CDN e por npm. A auditoria está em [`AUDITORIA.md`](AUDITORIA.
 | `2.7` | As garantias: nunca falhar a anfitriã, 300 KB, fora do fio principal |
 | `4.1` a `4.5` | Captura granular e agregação no dispositivo |
 | `5.1` a `5.4` | Mensagens de sistema, mascaramento, testes de fuga |
+| `9.1` | Coordenadas do toque, caixa do elemento, ordem da interação e profundidade de deslocamento |
 | `14.1` | Componente de avaliação embutido |
 | `18.1`, `18.2` | Mascaramento por omissão e testes de fuga alargados |
+
+## O rastreio individual: duas condições, e nunca uma fotografia
+
+As coordenadas de um toque, a caixa do elemento em que ele caiu, a ordem da interação
+dentro do ecrã e a profundidade de deslocamento **só saem com duas coisas ligadas**:
+
+- o nível **detalhado**, que diz quanta granularidade se capta;
+- o **rastreio individual** do projeto, que diz se é legítimo seguir uma pessoa.
+
+São decisões diferentes de quem opera (`RF-IND-09`), e com uma condição só, desligar o
+rastreio deixava de mostrar e continuava a recolher. **A zona continua a sair sempre**:
+ela é uma grelha de seis por dez e agrupa sem localizar ninguém.
+
+O que sai é em **percentagem do visor**, e não em pixéis: a pergunta é *onde é que as
+pessoas tocam neste ecrã*, e um mapa em pixéis é um mapa por modelo de telemóvel.
+
+**E este SDK não sabe fotografar um ecrã.** Não é uma promessa: é o
+`src/sem-ecra.test.ts`, que percorre o código publicado e falha se encontrar
+`toDataURL`, `getDisplayMedia`, `captureStream`, `innerHTML` ou mais oito. É a irmã da
+bateria de fuga: aquela olha para o tráfego, esta olha para o que o código sabe fazer.
 
 ## Ler antes de mexer
 

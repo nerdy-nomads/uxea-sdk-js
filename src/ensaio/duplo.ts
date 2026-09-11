@@ -107,6 +107,25 @@ export function criarBrowser(html = "<h1>ensaio</h1>", opcoes: { caminho?: strin
     localStorage: loja,
   };
   (document as any).visibilityState = "visible";
+  // **O duplo não tem motor de desenho, e não finge ter um.** O `linkedom` monta a
+  // árvore e não calcula posição nenhuma, e por isso um `getBoundingClientRect`
+  // inventado por nós seria uma medida que o browser nunca daria.
+  //
+  // O que se faz é o contrário: a página de ensaio **declara** onde cada elemento
+  // está, num `data-caixa="x,y,largura,altura"` em pixels, e o duplo devolve isso.
+  // Fica à vista de quem lê o ensaio que aquelas coordenadas são um pressuposto do
+  // ensaio, e não uma medição, que é a única forma honesta de ensaiar código que
+  // lê geometria.
+  janela.innerWidth = 400;
+  janela.innerHeight = 800;
+  for (const el of Array.from(document.querySelectorAll("*")) as any[]) {
+    el.getBoundingClientRect = () => {
+      const bruto = String(el.getAttribute?.("data-caixa") ?? "");
+      const n = bruto.split(",").map((v: string) => Number(v.trim()) || 0);
+      const [x, y, w, h] = [n[0] ?? 0, n[1] ?? 0, n[2] ?? 0, n[3] ?? 0];
+      return { left: x, top: y, width: w, height: h, right: x + w, bottom: y + h, x, y };
+    };
+  }
   // A ponte que deixa o `disparar` levar o evento à janela, como o DOM leva.
   (document as any).__janela = janela;
 

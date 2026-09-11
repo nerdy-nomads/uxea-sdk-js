@@ -75,6 +75,22 @@ export interface Configuracao {
    */
   amostragemDetalhado: number;
   /**
+   * O rastreio individual do projeto. Cartão 9.5, `RF-IND-09`.
+   *
+   * **Falso por omissão, e é a única propriedade desta lista que degrada para
+   * "não".** Todas as outras medem tudo quando a configuração não chega, porque o
+   * `RF-CAP-10` diz que a degradação é decisão de quem opera. Esta é ao
+   * contrário, pela mesma razão que a lista de mensagens expostas está vazia por
+   * omissão: seguir o comportamento de uma pessoa, ainda que sob identificador
+   * opaco, é tratamento de dados pessoais pseudonimizados, e isso não pode
+   * começar por acidente de rede.
+   *
+   * Na prática não muda o comportamento de ninguém hoje: as coordenadas já só
+   * saíam no nível detalhado, e a amostragem do detalhado também é zero por
+   * omissão. O que muda é **qual das duas decisões falha para o lado seguro**.
+   */
+  rastreioIndividual: boolean;
+  /**
    * As chaves de mensagem que a instituição autorizou a sair por inteiro
    * (RNF-PRI-04). Vazia por omissão: o mascaramento é o estado de repouso, e a
    * exposição é que precisa de uma decisão de quem é responsável pelos dados.
@@ -98,6 +114,7 @@ export const CONFIGURACAO_SEGURA: Configuracao = {
   amostragem: 1,
   nivel: "padrao",
   amostragemDetalhado: 0,
+  rastreioIndividual: false,
   mensagensExpostas: [],
   captura: [],
   versao: 0,

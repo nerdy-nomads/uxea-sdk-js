@@ -28,6 +28,7 @@ import type { ElementoLike } from "../identity/element.ts";
 import { normalizarDestino } from "../identity/element.ts";
 import { serializar } from "../identidade/elemento.ts";
 import { ligarToques } from "./toques.ts";
+import { ligarDeslocamento } from "./deslocamento.ts";
 import { ligarCampos } from "./campos.ts";
 import { ligarProgressao, type EstadoTerminal } from "./progressao.ts";
 import { ligarMensagens, type TipoDeMensagem } from "./mensagens.ts";
@@ -43,6 +44,8 @@ export interface Nucleo {
   ecra(): string;
   /** O nível de captura em vigor, que decide o que sai e o que não sai. */
   nivel?(): "essencial" | "padrao" | "detalhado";
+  /** O rastreio individual do projeto, do cartão 9.5. */
+  individual?(): boolean;
   /** Pedidos da aplicação em voo, para saber se ela está ocupada. */
   emVoo?(): number;
   /**
@@ -70,6 +73,12 @@ export function chaveDeEcra(caminho: string, hash = ""): string {
 }
 
 export interface Ligacao {
+  /**
+   * O primeiro ecrã da sessão. **Emite o `ecra` e abre a medição do ecrã**: sem
+   * ele, o deslocamento nunca começava a medir na página de chegada, que numa
+   * aplicação de páginas é todas as páginas (cartão 9.1).
+   */
+  ecraInicial(): void;
   /** A página deixou de estar à vista: emite o `plano_fundo` com o tempo ativo. */
   esconder(): void;
   /** E voltou: o relógio do tempo à vista recomeça. */
@@ -114,6 +123,10 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
 
   /* ------------------------------------------------------ captura granular */
 
+  // Declarado aqui, antes da captura granular, porque o módulo de deslocamento
+  // precisa de saber em que ecrã a medição dele começou.
+  let ecraAtual = "";
+
   const nivel = () => nucleo.nivel?.() ?? "padrao";
   const detalhado = () => nivel() === "detalhado";
   const essencial = () => nivel() === "essencial";
@@ -122,9 +135,22 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     emitir: nucleo.emitir, agora: nucleo.agora, chaveDe, detalhado, essencial,
   });
 
+  // O rastreio individual é uma segunda condição, e não a mesma que o nível
+  // detalhado: aquele diz quanta granularidade se capta, este diz se é legítimo
+  // seguir uma pessoa (cartão 9.5, RF-IND-09). Por omissão está **ligado**, porque
+  // é o servidor que o desliga e um SDK sem resposta ainda não sabe.
+  const individual = () => nucleo.individual?.() ?? true;
+
   const toques = ligarToques(janela, documento, {
-    emitir: nucleo.emitir, agora: nucleo.agora, chaveDe, detalhado,
+    emitir: nucleo.emitir, agora: nucleo.agora, chaveDe, detalhado, individual,
     emVoo: () => nucleo.emVoo?.() ?? 0,
+  });
+
+  const deslocamento = ligarDeslocamento(janela, documento, {
+    emitir: nucleo.emitir, agora: nucleo.agora, detalhado, individual,
+    // O ecrã que **estava** quando a medição começou, e não o que está agora: numa
+    // aplicação de página única o endereço já mudou quando o SDK dá por ela.
+    ecra: () => ecraAtual || nucleo.ecra(),
   });
 
   const progressao = ligarProgressao(janela, documento, {
@@ -145,12 +171,12 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
 
   desligadores.push(() => campos.desligar());
   desligadores.push(() => toques.desligar());
+  desligadores.push(() => deslocamento.desligar());
   desligadores.push(() => progressao.desligar());
   desligadores.push(() => mensagens.desligar());
 
   /* ------------------------------------------------------------------ ecrã */
 
-  let ecraAtual = "";
   const verEcra = (motivo: "carregamento" | "navegacao" | "recuo") => {
     const nova = nucleo.ecra();
     // Um recuo para o mesmo ecrã não é uma visualização nova, mas continua a ser
@@ -161,6 +187,10 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     // Um ecrã novo é um passo novo, e é onde a contagem até à primeira interação
     // recomeça: o RF-GRA-08 mede-a por ecrã, e não por sessão.
     toques.ecraNovo();
+    // **Antes do passo, e depois do evento de ecrã.** O deslocamento do ecrã que
+    // acabou pertence ao ecrã que acabou, e emiti-lo depois de o `screen_key` já
+    // ter mudado punha a profundidade no ecrã errado.
+    deslocamento.ecraNovo();
     progressao.passo(nova);
   };
 
@@ -216,7 +246,13 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
       el = el.parentElement;
     }
     if (!el) return;
-    nucleo.emitir("toque", { element_key: chaveDe(el) });
+    // A posição do gesto que produziu este clique (cartão 9.1). Vem vazia sem
+    // rastreio individual, e vem vazia num clique sem gesto (teclado, `.click()`).
+    const onde = toques.posicaoDoToque(el);
+    nucleo.emitir("toque", {
+      element_key: chaveDe(el),
+      ...(Object.keys(onde).length > 0 ? { properties: onde } : {}),
+    });
   });
 
   // O foco, a tecla e o desfoco são agora do `campos.ts`, que os agrega num
@@ -267,10 +303,35 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
   let tempoAtivoMs = 0;
 
   return {
+    /**
+     * O primeiro ecrã: o que a pessoa viu ao chegar. Cartão 9.1.
+     *
+     * # O defeito que isto corrigiu, e era grande
+     *
+     * O primeiro `ecra` era emitido pelo `index.ts` com um `emitir` direto, e por
+     * isso **não passava por aqui**. O `deslocamento` só começa a medir no
+     * `ecraNovo`, e o resultado é que o primeiro ecrã de cada sessão nunca
+     * produzia profundidade nenhuma.
+     *
+     * Numa aplicação de página única isso é um ecrã em cada sessão. **Numa
+     * aplicação de páginas, é todos**: cada página é um primeiro ecrã, e o mapa
+     * de profundidade do cartão 9.2 ficava vazio para sempre sem nada a dizer
+     * porquê. Deu-se por isso a correr a loja de ensaio num browser a sério.
+     *
+     * Não chama o `progressao.passo`, e é de propósito: o primeiro passo já é
+     * emitido pela própria progressão ao ligar-se, e chamá-lo aqui daria dois.
+     */
+    ecraInicial() {
+      ecraAtual = nucleo.ecra();
+      nucleo.emitir("ecra", {});
+      toques.ecraNovo();
+      deslocamento.ecraNovo();
+    },
     esconder() {
       if (aVistaDesde > 0) tempoAtivoMs += Math.max(0, Math.round(nucleo.agora() - aVistaDesde));
       aVistaDesde = 0;
       toques.fechar();
+      deslocamento.fechar();
       campos.esconder();
       nucleo.emitir("plano_fundo", { duration_ms: tempoAtivoMs });
       // O abandono marca-se **depois** do plano de fundo, e é de propósito: a

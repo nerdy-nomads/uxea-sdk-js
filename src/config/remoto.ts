@@ -55,7 +55,14 @@ export function normalizar(c: any): Configuracao {
   const mensagensExpostas = Array.isArray(c?.mensagens_expostas)
     ? c.mensagens_expostas.filter((x: unknown) => typeof x === "string" && x).slice(0, 200)
     : [];
-  return { amostragem, nivel, captura, versao, amostragemDetalhado, mensagensExpostas };
+  // **Só `true` liga.** Qualquer outra coisa (ausente, nulo, a cadeia "true", um
+  // número) deixa desligado: uma configuração meio escrita não pode ligar o
+  // rastreio individual, e é a mesma regra da lista de mensagens expostas.
+  const rastreioIndividual = c?.rastreio_individual === true;
+  return {
+    amostragem, nivel, captura, versao, amostragemDetalhado,
+    rastreioIndividual, mensagensExpostas,
+  };
 }
 
 /**
