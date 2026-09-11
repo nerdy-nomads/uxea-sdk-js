@@ -113,7 +113,11 @@ export function ligarProgressao(janela: any, documento: any, ctx: ContextoDeProg
       ctx.emitir("terminal", {
         properties: {
           estado,
-          ...(estado === "abandonado" && campo ? { campo_abandono: campo.slice(0, 64) } : {}),
+          // **512 e não 64.** O que vai aqui é a chave do elemento, e truncá-la aos
+          // 64 de um valor de texto fazia o campo do abandono deixar de corresponder
+          // ao campo que produziu a hesitação e os erros: ficavam duas linhas no
+          // painel com o mesmo nome e nenhum dos números em comum.
+          ...(estado === "abandonado" && campo ? { campo_abandono: campo.slice(0, 512) } : {}),
         },
       });
     },

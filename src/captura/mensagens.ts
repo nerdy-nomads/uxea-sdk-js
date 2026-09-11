@@ -228,7 +228,9 @@ export function ligarMensagens(janela: any, documento: any, ctx: ContextoDeMensa
       ...(dados.extra ?? {}),
     };
     if (dados.classe) propriedades["classe_erro"] = dados.classe;
-    if (dados.campo) propriedades["campo_associado"] = dados.campo.slice(0, 64);
+    // A chave do elemento, inteira: 512 como o `element_key`. Truncada aos 64, a
+    // mensagem deixava de se ligar ao campo que a produziu.
+    if (dados.campo) propriedades["campo_associado"] = dados.campo.slice(0, 512);
     const passo = ctx.passo();
     if (passo) propriedades["passo"] = passo.slice(0, 64);
 

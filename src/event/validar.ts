@@ -71,6 +71,29 @@ const PROPRIEDADES_OPACAS = new Set(
   ((esquema as any).propriedades_opacas?.chaves ?? []) as string[],
 );
 
+/**
+ * As propriedades cujo valor é uma **chave de elemento**, e não texto.
+ *
+ * Uma chave de elemento é o tuplo de cinco sinais do ADR 0003 já serializado, e
+ * passa facilmente dos 64 caracteres que um valor de propriedade permite. Sem esta
+ * lista, o SDK truncava-a e o campo do abandono deixava de corresponder ao campo
+ * que produziu os outros números: o `RF-GRA-18`, que o documento chama a
+ * informação mais accionável do conjunto, ficava com um identificador que não
+ * junta com nada.
+ */
+const PROPRIEDADES_IDENTIFICADOR = new Set(
+  ((esquema as any).propriedades_identificador?.chaves ?? []) as string[],
+);
+
+/**
+ * A forma que o serializador do ADR 0003 produz. **É o marcador de versão que a
+ * distingue, e não o comprimento**: uma chave curta é uma chave na mesma, e um
+ * texto comprido continua a ser texto.
+ */
+export function chaveDeElemento(v: string): boolean {
+  return v.includes("v1|f=");
+}
+
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RE_RFC3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
 
@@ -105,6 +128,13 @@ function validarCampo(c: Campo, bruto: unknown): Erro | null {
       for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
         if (!PROPRIEDADES_PERMITIDAS.has(k)) return e(CODIGOS.valor, `propriedade ${JSON.stringify(k)} não está na lista de permitidas`);
         if (typeof v === "string") {
+          // Uma chave de elemento vale os mesmos 512 caracteres do campo
+          // `element_key`. A exceção é estreita de propósito: só quando o valor tem
+          // mesmo a forma de uma chave, e por isso não abre porta a texto livre.
+          if (PROPRIEDADES_IDENTIFICADOR.has(k) && chaveDeElemento(v)) {
+            if ([...v].length > 512) return e(CODIGOS.tamanho, `propriedade ${JSON.stringify(k)} com mais de 512 caracteres`);
+            continue;
+          }
           if ([...v].length > 64) return e(CODIGOS.tamanho, `propriedade ${JSON.stringify(k)} com mais de 64 caracteres: parece conteúdo`);
           // A regra `sem_conteudo` diz, com todas as letras, que um valor de
           // propriedade é número, booleano ou **texto curto sem dígitos longos**.
