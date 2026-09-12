@@ -1,0 +1,137 @@
+{
+  "data": "2026-09-12",
+  "ecras": 31,
+  "elementosAcionaveis": 3210,
+  "chavesCanonicas": 551,
+  "padroes": 522,
+  "entradasAVista": 158,
+  "ocultadas": 142,
+  "limiar": 10,
+  "calculoMs": 48,
+  "porEcra": [
+    {
+      "ecra": "/",
+      "elementos": 130
+    },
+    {
+      "ecra": "/browse/benefits",
+      "elementos": 97
+    },
+    {
+      "ecra": "/browse/births-deaths-marriages",
+      "elementos": 95
+    },
+    {
+      "ecra": "/browse/business",
+      "elementos": 112
+    },
+    {
+      "ecra": "/browse/childcare-parenting",
+      "elementos": 95
+    },
+    {
+      "ecra": "/browse/citizenship",
+      "elementos": 93
+    },
+    {
+      "ecra": "/browse/driving",
+      "elementos": 106
+    },
+    {
+      "ecra": "/browse/disabilities",
+      "elementos": 94
+    },
+    {
+      "ecra": "/browse/education",
+      "elementos": 94
+    },
+    {
+      "ecra": "/browse/employing-people",
+      "elementos": 97
+    },
+    {
+      "ecra": "/browse/environment-countryside",
+      "elementos": 98
+    },
+    {
+      "ecra": "/browse/housing-local-services",
+      "elementos": 102
+    },
+    {
+      "ecra": "/browse/tax",
+      "elementos": 97
+    },
+    {
+      "ecra": "/browse/abroad",
+      "elementos": 92
+    },
+    {
+      "ecra": "/browse/visas-immigration",
+      "elementos": 101
+    },
+    {
+      "ecra": "/browse/working",
+      "elementos": 98
+    },
+    {
+      "ecra": "/browse/justice",
+      "elementos": 96
+    },
+    {
+      "ecra": "/apply-for-a-passport",
+      "elementos": 12
+    },
+    {
+      "ecra": "/book-driving-test",
+      "elementos": 120
+    },
+    {
+      "ecra": "/check-mot-status",
+      "elementos": 98
+    },
+    {
+      "ecra": "/check-state-pension",
+      "elementos": 115
+    },
+    {
+      "ecra": "/child-benefit",
+      "elementos": 118
+    },
+    {
+      "ecra": "/council-tax-bands",
+      "elementos": 100
+    },
+    {
+      "ecra": "/jobseekers-allowance",
+      "elementos": 114
+    },
+    {
+      "ecra": "/log-in-file-self-assessment-tax-return",
+      "elementos": 112
+    },
+    {
+      "ecra": "/marriage-allowance",
+      "elementos": 106
+    },
+    {
+      "ecra": "/register-to-vote",
+      "elementos": 130
+    },
+    {
+      "ecra": "/renew-driving-licence",
+      "elementos": 106
+    },
+    {
+      "ecra": "/student-finance",
+      "elementos": 146
+    },
+    {
+      "ecra": "/universal-credit",
+      "elementos": 126
+    },
+    {
+      "ecra": "/vehicle-tax",
+      "elementos": 110
+    }
+  ]
+}

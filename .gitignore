@@ -15,3 +15,12 @@ coverage/
 # lembrar de correr uma ferramenta antes.
 tools/survival/demo.html
 exemplo/.index.*.html
+
+# Os instantâneos do ensaio do inventário (cartão 10.1)
+#
+# **Estes ficam de fora**, ao contrário dos do medidor de sobrevivência acima, e a
+# diferença é o que corre sobre eles: aqueles sustentam a bateria de fuga, que tem
+# de correr num clone limpo; estes sustentam uma medição que se faz uma vez e cujo
+# resultado fica escrito no `resultado.json` e no cartão. São 2,3 MB de HTML de
+# terceiros que ninguém volta a ler.
+tools/inventario/cache/
