@@ -16,4 +16,20 @@ SERVIDOR="${3:-http://localhost:8710}"
 SAIDA="exemplo/.index.${PORTA}.html"
 sed -e "s|CHAVE_AQUI|${CHAVE}|" -e "s|http://localhost:8710|${SERVIDOR}|g" exemplo/index.html > "$SAIDA"
 echo "http://localhost:${PORTA}/${SAIDA}"
-exec python3 -m http.server "$PORTA"
+# **A raiz leva à loja.** O ficheiro gerado começa por ponto (fica fora do git), e
+# quem abria http://localhost:8091/ via a listagem do repositório em vez da loja.
+exec python3 - "$PORTA" "$SAIDA" <<'PY'
+import http.server, sys
+porta, pagina = int(sys.argv[1]), sys.argv[2]
+
+class Loja(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path in ("/", "/index.html", "/exemplo", "/exemplo/"):
+            self.send_response(302)
+            self.send_header("Location", "/" + pagina)
+            self.end_headers()
+            return
+        super().do_GET()
+
+http.server.ThreadingHTTPServer(("", porta), Loja).serve_forever()
+PY
