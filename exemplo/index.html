@@ -95,6 +95,19 @@
       <button type="button" class="secundario" id="msg-campo" data-testid="botao-msg-campo">Erro no campo do cartão</button>
       <button type="button" class="secundario" id="msg-tecnico" data-testid="botao-msg-tecnico">Erro que ninguém vê</button>
       <div id="avisos" aria-live="polite"></div>
+      <!--
+        Os inquéritos do cartão 14.1. **O componente aparece sozinho** quando uma regra
+        configurada na consola dispara (depois de concluir, de abandonar, de um erro, na
+        primeira utilização, ou por amostragem), sem esta página escrever uma linha. Os
+        botões existem só para o ensaio não depender da sorte do sorteio de uma em dez:
+        chamam `uxda.inquerito(chave)`, que salta o sorteio e não salta a fadiga.
+      -->
+      <p class="ensaio-inquerito">
+        <button type="button" class="secundario" data-inquerito="facilidade_do_pagamento">Pedir a avaliação da facilidade</button>
+        <button type="button" class="secundario" data-inquerito="porque_desistiu">Pedir o porquê de desistir</button>
+        <button type="button" class="secundario" data-inquerito="recomendacao">Pedir a recomendação</button>
+        <span id="estado-inquerito"></span>
+      </p>
     </form>
   </section>
   <aside>
@@ -177,6 +190,16 @@
     window.uxda?.erroTecnico("resposta_ilegivel", { operacao: "pagamento" });
   });
 
+  for (const b of document.querySelectorAll("[data-inquerito]")) {
+    b.addEventListener("click", async () => {
+      const chave = b.getAttribute("data-inquerito");
+      const apareceu = await window.uxda?.inquerito(chave);
+      const d = window.uxda?.diagnostico?.().inqueritos;
+      document.getElementById("estado-inquerito").textContent = apareceu
+        ? `o componente de ${chave} apareceu`
+        : `não apareceu: ${d?.ultimoMotivo ?? "sem resposta"}`;
+    });
+  }
   document.getElementById("falhar").addEventListener("click", () => {
     // Porta fechada de propósito: um 404 é a aplicação a dizer que não, e isso é
     // comportamento normal. O que interessa medir é o pedido que **não chega**.

@@ -24,6 +24,7 @@
  */
 import { protegido } from "../safe.ts";
 import { mascarar, mascararMensagem, esqueletoDeMensagem, resumo, normalizarTexto } from "../identity/mask.ts";
+import { foraDaCaptura } from "./fora.ts";
 
 /** As quatro classes do RF-MSG-01. */
 export type TipoDeMensagem = "erro" | "aviso" | "sucesso" | "info";
@@ -290,6 +291,9 @@ export function ligarMensagens(janela: any, documento: any, ctx: ContextoDeMensa
 
   const analisar = (el: any) => {
     if (!ehMensagem(el)) return;
+    // O agradecimento e os avisos do componente de avaliação são do SDK, e não
+    // mensagens da aplicação (cartão 14.1).
+    if (foraDaCaptura(el)) return;
     if (temMensagemDentro(el)) return;
     // Um nó só se conta uma vez, mesmo que o observador o veja duas: o `linkedom`
     // e os browsers entregam a mesma alteração de atributo em dois registos.

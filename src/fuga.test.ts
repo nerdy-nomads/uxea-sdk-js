@@ -24,6 +24,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { criarBrowser, disparar } from "./ensaio/duplo.ts";
 import { iniciar } from "./index.ts";
+import * as I from "./ensaio/inquerito.ts";
 
 /**
  * O que uma pessoa escreve, e que não pode sair do dispositivo por caminho nenhum.
@@ -293,4 +294,74 @@ test("5.4 em volume: quinhentas mensagens com conteúdo interpolado, e nada esca
   assert.ok(mensagens.length >= 480, `só saíram ${mensagens.length} mensagens: a bateria correu sobre pouco`);
   // E o número fica escrito, que é o que a `Definição de pronto` pede.
   console.log(`  5.4 volume: ${mensagens.length} mensagens verificadas, ${valores.length} valores interpolados, ${distintivos.length} distintivos, 0 fugas`);
+});
+
+test("14.1 um inquérito respondido com segredos no comentário, numa página cheia deles, e nada escapa", async () => {
+  // **O caminho novo que a fase 14 abriu**, e é o mais direto de todos: pela
+  // primeira vez o SDK tem um campo onde a pessoa escreve de propósito, e o que ela
+  // escreve vai para o servidor. As outras baterias provam que o conteúdo dos campos
+  // da página não sai; esta prova que o conteúdo do campo **do próprio SDK** só sai
+  // mascarado, e que responder a um inquérito não abre um caminho para os campos da
+  // página ao lado.
+  //
+  // No nível detalhado e com o rastreio individual, que é quando a captura emite
+  // mais caminhos por onde escapar.
+  const br = criarBrowser(PAGINA, { caminho: "/checkout" });
+  I.servir(br, I.inqueritos([I.regra({
+    gatilho: "apos_erro", criterios: [], inicio: [], formato: "esforco", comentario: true, atraso_ms: 800,
+  })]), { nivel: "detalhado", rastreioIndividual: true });
+  const uxda = await I.arrancar(br);
+
+  // A página com tudo preenchido, como na bateria de cima.
+  const campos = ["nome", "email", "bi", "iban", "cartao", "senha", "morada"];
+  campos.forEach((id, i) => {
+    const el = br.documento.querySelector("#" + id)!;
+    const valor = SEGREDOS[i % SEGREDOS.length]!;
+    disparar(br.documento, "#" + id, "focusin");
+    el.value = valor;
+    disparar(br.documento, "#" + id, "input", { inputType: "insertText", data: valor });
+    disparar(br.documento, "#" + id, "focusout");
+  });
+
+  // A aplicação mostra um erro com o que a pessoa escreveu lá dentro, e é esse erro
+  // que dispara o inquérito.
+  const aviso = br.documento.createElement("div");
+  aviso.setAttribute("role", "alert");
+  aviso.setAttribute("class", "erro");
+  aviso.textContent = "O cartão 4111111111111111 foi recusado para ana.silva@exemplo.ao";
+  br.documento.querySelector("#avisos")!.appendChild(aviso);
+  await br.avancar(1000);
+  assert.ok(I.hospedeiro(br), "o inquérito não apareceu, e a bateria não provava nada");
+
+  // A resposta, com os segredos no comentário: o cartão por inteiro e às quatro, o
+  // correio, o nome, o contacto e o documento.
+  const comentario = "Paguei com o cartão 4111111111111111 (4111 1111 1111 1111) e o recibo não chegou a "
+    + "ana.silva@exemplo.ao, falem com Ana Maria da Silva pelo +244923000111, documento 005123456LA041";
+  I.escolher(br, "2");
+  I.escrever(br, comentario);
+  // E quem responde também mexe na página ao lado, com o cartão aberto.
+  disparar(br.documento, "#cartao", "focusin");
+  disparar(br.documento, "#cartao", "input", { inputType: "insertText", data: SEGREDOS[3] });
+  disparar(br.documento, "#cartao", "focusout");
+  await I.enviarResposta(br);
+
+  uxda.terminal("erro");
+  await uxda.descarregar();
+  await br.avancar(30000);
+
+  const enviadas = br.pedidos.filter((p) => p.url.endsWith("/v1/respostas") && p.estado === 202);
+  assert.equal(enviadas.length, 1, "a resposta não chegou a sair, e a bateria não provava nada");
+  const corpo = JSON.parse(enviadas[0]!.corpo);
+  assert.ok(corpo.comentario.includes("{email}") && corpo.comentario.includes("{numero}"),
+    `o comentário não passou pela máscara: ${corpo.comentario}`);
+  assert.ok(!/\d{5}/.test(corpo.comentario), `uma corrida de algarismos no comentário: ${corpo.comentario}`);
+  assert.ok(!corpo.comentario.includes("@"), `um arroba no comentário: ${corpo.comentario}`);
+
+  // E o tráfego inteiro: eventos, elegibilidade, resposta e configuração.
+  const bruto = JSON.stringify(br.pedidos);
+  for (const segredo of [...SEGREDOS, "4111 1111 1111 1111"]) {
+    assert.ok(!bruto.includes(segredo), `${JSON.stringify(segredo)} saiu do dispositivo`);
+  }
+  assert.ok(br.eventos().some((e: any) => e.event_type === "campo"), "a captura da página não correu");
+  console.log(`  14.1 fuga: ${br.pedidos.length} pedidos, ${br.eventos().length} eventos e 1 resposta verificados, 0 fugas`);
 });

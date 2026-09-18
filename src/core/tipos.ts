@@ -46,6 +46,15 @@ export interface Ambiente {
   documento: any;
   armazenamento: Armazenamento | null;
   enviar(url: string, corpo: string, cabecalhos: Record<string, string>, sincrono: boolean, metodo?: string): Promise<Resposta>;
+  /**
+   * O sorteio dos inquéritos (RF-PER-04), entre 0 e 1. Por omissão, `Math.random`.
+   *
+   * Existe só para os ensaios poderem semear o gerador: a amostragem de um
+   * inquérito é um sorteio por disparo, e não a amostragem determinística por
+   * utilizador da captura, e um ensaio estatístico sem semente é um ensaio que
+   * falha uma vez em cada cem corridas.
+   */
+  aleatorio?(): number;
 }
 
 export interface Resposta {
@@ -105,7 +114,105 @@ export interface Configuracao {
   captura: string[];
   /** Versão da configuração, para se saber qual estava em vigor. */
   versao: number;
+  /**
+   * Os inquéritos do conjunto RF-PER, e o tema e a fadiga que valem para todos.
+   *
+   * **Degradam para "nenhum", como o rastreio individual.** Uma configuração que
+   * não chega, ou que chega estragada, não pergunta nada a ninguém: perguntar de
+   * mais é a fadiga que o RF-PER-05 existe para evitar, e nunca pode começar por
+   * acidente de rede.
+   */
+  inqueritos: ConfiguracaoDeInqueritos;
 }
+
+/* ------------------------------------------------------------- inquéritos */
+
+/** Os cinco formatos do RF-PER-03. */
+export type FormatoDeInquerito = "esforco" | "satisfacao" | "recomendacao" | "escolha" | "livre";
+
+/** Os cinco gatilhos do RF-PER-04. O `manual` é o de `uxda.inquerito()`, e não se configura. */
+export type GatilhoDeInquerito = "apos_conclusao" | "apos_abandono" | "apos_erro" | "primeira_utilizacao" | "amostragem";
+
+/** Uma condição, com a mesma forma e a mesma semântica do `core/definition`. */
+export interface CondicaoDeRegra {
+  campo: string;
+  operador: string;
+  valor: string;
+}
+
+/** Condições que valem em **e**. Uma lista de critérios vale em **ou**. */
+export interface CriterioDeRegra {
+  condicoes: CondicaoDeRegra[];
+}
+
+export interface OpcaoDeInquerito {
+  chave: string;
+  pt: string;
+  en: string;
+}
+
+export interface RegraDeInquerito {
+  chave: string;
+  versao: number;
+  formato: FormatoDeInquerito;
+  pergunta: { pt: string; en: string };
+  opcoes: OpcaoDeInquerito[];
+  multipla: boolean;
+  /** Um campo livre **opcional** ao lado da escala ou da escolha. */
+  comentario: boolean;
+  gatilho: GatilhoDeInquerito;
+  criterios: CriterioDeRegra[];
+  /** O início da tarefa: é por ele que se sabe o abandono e o `tentativa_inicio`. */
+  inicio: CriterioDeRegra[];
+  /** Probabilidade do sorteio, de 0 a 1. **0,1 quando não vem**, e nunca toda a gente. */
+  amostragem: number;
+  atrasoMs: number;
+  contexto: { tarefa: string; passo: string; funcionalidade: string };
+}
+
+export interface TemaDeInquerito {
+  corPrimaria: string;
+  corFundo: string;
+  corTexto: string;
+  fonte: string;
+  cantosPx: number;
+  idioma: "pt" | "en";
+}
+
+export interface FadigaDeInquerito {
+  maxPedidos: number;
+  periodoDias: number;
+  excluirRespondeuDias: number;
+}
+
+export interface ConfiguracaoDeInqueritos {
+  tema: TemaDeInquerito;
+  fadiga: FadigaDeInquerito;
+  associarRespostas: boolean;
+  lista: RegraDeInquerito[];
+}
+
+export const TEMA_POR_OMISSAO: TemaDeInquerito = {
+  corPrimaria: "#1f4fd1",
+  corFundo: "#ffffff",
+  corTexto: "#1b1f24",
+  fonte: "system-ui, sans-serif",
+  cantosPx: 12,
+  idioma: "pt",
+};
+
+export const FADIGA_POR_OMISSAO: FadigaDeInquerito = {
+  maxPedidos: 1,
+  periodoDias: 30,
+  excluirRespondeuDias: 90,
+};
+
+export const SEM_INQUERITOS: ConfiguracaoDeInqueritos = {
+  tema: TEMA_POR_OMISSAO,
+  fadiga: FADIGA_POR_OMISSAO,
+  associarRespostas: false,
+  lista: [],
+};
 
 export const CONFIGURACAO_SEGURA: Configuracao = {
   // O valor por omissão mede tudo: uma configuração que não chega não pode
@@ -118,6 +225,7 @@ export const CONFIGURACAO_SEGURA: Configuracao = {
   mensagensExpostas: [],
   captura: [],
   versao: 0,
+  inqueritos: SEM_INQUERITOS,
 };
 
 /** Os dez tipos do RF-CAP-04, e a ordem é a do documento. */

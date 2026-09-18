@@ -18,13 +18,30 @@
  */
 import type { Ambiente, Armazenamento, Configuracao } from "../core/tipos.ts";
 import { CONFIGURACAO_SEGURA } from "../core/tipos.ts";
+import { normalizarInqueritos } from "../inquerito/configuracao.ts";
 
 const CHAVE_CACHE = "uxda.config";
 /** Seis horas: uma emergência resolve-se na sessão seguinte, não daqui a um dia. */
 export const VALIDADE_MS = 6 * 60 * 60 * 1000;
 
+/**
+ * O que fica guardado é **a resposta do servidor tal como chegou**, e não a
+ * configuração já lida.
+ *
+ * # O defeito que isto corrigiu
+ *
+ * Guardava-se a configuração normalizada, com os nomes do SDK
+ * (`amostragemDetalhado`, `mensagensExpostas`, `rastreioIndividual`), e ao reler
+ * voltava a passar pelo `normalizar`, que lê os nomes do fio (`amostragem_detalhado`,
+ * `mensagens_expostas`, `rastreio_individual`). Os três voltavam ao valor por
+ * omissão num arranque sem rede, sem erro nenhum, e a cache deixava de ser "a
+ * resposta anterior" em tudo o que não fosse a amostragem e o nível. Apareceu ao
+ * acrescentar os inquéritos (cartão 14.1), que se perdiam da mesma maneira.
+ *
+ * Uma cache antiga, com a forma de antes, continua a ler-se: dá o que dava.
+ */
 interface Guardada {
-  config: Configuracao;
+  config: unknown;
   quando: number;
 }
 
@@ -59,9 +76,15 @@ export function normalizar(c: any): Configuracao {
   // número) deixa desligado: uma configuração meio escrita não pode ligar o
   // rastreio individual, e é a mesma regra da lista de mensagens expostas.
   const rastreioIndividual = c?.rastreio_individual === true;
+  // Os inquéritos do RF-PER. Qualquer coisa estragada dá **nenhum**, e nunca o
+  // contrário: ver `inquerito/configuracao.ts`.
+  let inqueritos = CONFIGURACAO_SEGURA.inqueritos;
+  try {
+    inqueritos = normalizarInqueritos(c?.inqueritos);
+  } catch { /* uma configuração hostil fica sem inquéritos, e a captura segue */ }
   return {
     amostragem, nivel, captura, versao, amostragemDetalhado,
-    rastreioIndividual, mensagensExpostas,
+    rastreioIndividual, mensagensExpostas, inqueritos,
   };
 }
 
@@ -78,9 +101,10 @@ export async function obter(amb: Ambiente, servidor: string, chave: string): Pro
     const r = await amb.enviar(`${servidor}/v1/config`, "", { "X-UXDA-Key": chave }, false, "GET");
     if (r.estado >= 200 && r.estado < 300 && r.corpo) {
       const corpo = JSON.parse(r.corpo);
-      const config = normalizar(corpo?.dados ?? corpo);
+      const dados = corpo?.dados ?? corpo;
+      const config = normalizar(dados);
       try {
-        loja?.setItem(CHAVE_CACHE, JSON.stringify({ config, quando: amb.agora() } satisfies Guardada));
+        loja?.setItem(CHAVE_CACHE, JSON.stringify({ config: dados, quando: amb.agora() } satisfies Guardada));
       } catch { /* sem cache, segue na mesma */ }
       return { config, origem: "servidor" };
     }

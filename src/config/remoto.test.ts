@@ -143,3 +143,149 @@ test("4.5 a amostragem do detalhado é determinística, e por isso não deixa bu
   for (let i = 0; i < total; i++) if (dentro(`x${i}`) === naAmostra(`x${i}`, 0.2)) iguais++;
   assert.ok(iguais < total * 0.95, "as duas amostras não podem ser a mesma gente");
 });
+
+/* ------------------------------------------------------------- inquéritos */
+
+const REGRA = {
+  chave: "facilidade_do_pagamento", versao: 3, formato: "esforco",
+  pergunta: { pt: "Foi fácil pagar a encomenda?", en: "Was it easy to pay for the order?" },
+  opcoes: [], multipla: false, comentario: true, gatilho: "apos_conclusao",
+  criterios: [{ condicoes: [{ campo: "screen_key", operador: "igual", valor: "confirmacao" }] }],
+  inicio: [{ condicoes: [{ campo: "screen_key", operador: "igual", valor: "pagamento" }] }],
+  amostragem: 0.1, atraso_ms: 1500, contexto: { tarefa: "pagar_uma_encomenda", passo: "", funcionalidade: "" },
+};
+
+test("14.1 sem o campo, ou com ele estragado, não se pergunta nada", () => {
+  assert.deepEqual(CONFIGURACAO_SEGURA.inqueritos.lista, [], "o valor seguro não tem inquéritos");
+  for (const lixo of [undefined, null, "lixo", 42, [], { lista: "x" }, { lista: null }, { tema: {} }]) {
+    assert.deepEqual(normalizar({ amostragem: 1, inqueritos: lixo }).inqueritos.lista, [], `${JSON.stringify(lixo)} deu inquéritos`);
+  }
+  const c = normalizar({ inqueritos: { lista: [null, 7, "x", { chave: "a" }, { ...REGRA, formato: "estrelas" }, { ...REGRA, gatilho: "sempre" }] } });
+  assert.deepEqual(c.inqueritos.lista, []);
+});
+
+test("14.1 o exemplo do contrato lê-se inteiro, com os nomes do SDK", () => {
+  const c = normalizar({
+    inqueritos: {
+      tema: { cor_primaria: "#1f4fd1", cor_fundo: "#ffffff", cor_texto: "#1b1f24", fonte: "system-ui, sans-serif", cantos_px: 12, idioma: "en" },
+      fadiga: { max_pedidos: 2, periodo_dias: 14, excluir_respondeu_dias: 60 },
+      associar_respostas: true,
+      lista: [REGRA],
+    },
+  });
+  assert.deepEqual(c.inqueritos.tema, { corPrimaria: "#1f4fd1", corFundo: "#ffffff", corTexto: "#1b1f24", fonte: "system-ui, sans-serif", cantosPx: 12, idioma: "en" });
+  assert.deepEqual(c.inqueritos.fadiga, { maxPedidos: 2, periodoDias: 14, excluirRespondeuDias: 60 });
+  assert.equal(c.inqueritos.associarRespostas, true);
+  const r = c.inqueritos.lista[0]!;
+  assert.equal(r.chave, "facilidade_do_pagamento");
+  assert.equal(r.formato, "esforco");
+  assert.equal(r.comentario, true);
+  assert.equal(r.amostragem, 0.1);
+  assert.equal(r.atrasoMs, 1500);
+  assert.deepEqual(r.contexto, { tarefa: "pagar_uma_encomenda", passo: "", funcionalidade: "" });
+});
+
+test("14.2 os valores por omissão: amostragem 0,1, fadiga de 1 em 30 dias, 90 depois de responder", () => {
+  const semNada = { ...REGRA } as Record<string, unknown>;
+  delete semNada["amostragem"];
+  delete semNada["atraso_ms"];
+  const c = normalizar({ inqueritos: { lista: [semNada] } });
+  assert.equal(c.inqueritos.lista[0]!.amostragem, 0.1, "nunca toda a gente sempre");
+  assert.deepEqual(c.inqueritos.fadiga, { maxPedidos: 1, periodoDias: 30, excluirRespondeuDias: 90 });
+  assert.equal(c.inqueritos.tema.idioma, "pt");
+  assert.equal(c.inqueritos.associarRespostas, false, "anónima por omissão");
+  // Uma amostragem absurda também vale 0,1, e não 1.
+  assert.equal(normalizar({ inqueritos: { lista: [{ ...REGRA, amostragem: 7 }] } }).inqueritos.lista[0]!.amostragem, 0.1);
+  assert.equal(normalizar({ inqueritos: { lista: [{ ...REGRA, amostragem: "1" }] } }).inqueritos.lista[0]!.amostragem, 0.1);
+  // `associar_respostas` só liga com `true`.
+  assert.equal(normalizar({ inqueritos: { associar_respostas: "true", lista: [] } }).inqueritos.associarRespostas, false);
+});
+
+test("14.1 um tema com valores que não são cores nem fontes cai para o por omissão", () => {
+  const c = normalizar({
+    inqueritos: {
+      tema: { cor_primaria: "red;} body{display:none", cor_fundo: "url(x)", cor_texto: 12, fonte: "x}{", cantos_px: 900, idioma: "fr" },
+      lista: [],
+    },
+  });
+  assert.equal(c.inqueritos.tema.corPrimaria, "#1f4fd1");
+  assert.equal(c.inqueritos.tema.corFundo, "#ffffff");
+  assert.equal(c.inqueritos.tema.corTexto, "#1b1f24");
+  assert.equal(c.inqueritos.tema.fonte, "system-ui, sans-serif");
+  assert.equal(c.inqueritos.tema.cantosPx, 32);
+  assert.equal(c.inqueritos.tema.idioma, "pt");
+  const bom = normalizar({ inqueritos: { tema: { cor_primaria: "rgb(10, 20, 30)", fonte: '"Open Sans", Arial' }, lista: [] } });
+  assert.equal(bom.inqueritos.tema.corPrimaria, "rgb(10, 20, 30)");
+  assert.equal(bom.inqueritos.tema.fonte, '"Open Sans", Arial');
+});
+
+test("14.2 uma condição estragada tira o critério inteiro, e nunca só a condição", () => {
+  // Tirar só a condição alargava o critério (as condições valem em **e**), e o
+  // inquérito passava a aparecer a quem não devia.
+  const c = normalizar({
+    inqueritos: {
+      lista: [{
+        ...REGRA,
+        criterios: [
+          { condicoes: [{ campo: "screen_key", operador: "igual", valor: "confirmacao" }, { campo: "coluna_inventada", operador: "igual", valor: "x" }] },
+          { condicoes: [{ campo: "event_type", operador: "igual", valor: "terminal" }, { campo: "propriedade:estado", operador: "igual", valor: "sucesso" }] },
+          { condicoes: [{ campo: "event_type", operador: "igual", valor: "" }] },
+          { condicoes: [] },
+          { condicoes: [{ campo: "event_type", operador: "existe" }] },
+        ],
+      }],
+    },
+  });
+  const criterios = c.inqueritos.lista[0]!.criterios;
+  assert.equal(criterios.length, 2);
+  assert.deepEqual(criterios[0]!.condicoes.map((x) => x.campo), ["event_type", "propriedade:estado"]);
+  assert.deepEqual(criterios[1]!.condicoes, [{ campo: "event_type", operador: "existe", valor: "" }]);
+});
+
+test("14.2 um inquérito estragado sai, e os outros ficam", () => {
+  const c = normalizar({
+    inqueritos: {
+      lista: [
+        { ...REGRA, chave: "sem_criterios", criterios: [] },
+        { ...REGRA, chave: "abandono_sem_inicio", gatilho: "apos_abandono", inicio: [] },
+        { ...REGRA, chave: "escolha_sem_opcoes", formato: "escolha", opcoes: [] },
+        { ...REGRA, chave: "sem_pergunta", pergunta: {} },
+        { ...REGRA, chave: "erro_por_omissao", gatilho: "apos_erro", criterios: [] },
+        { ...REGRA, chave: "amostra", gatilho: "amostragem", criterios: [] },
+        { ...REGRA, chave: "escolha", formato: "escolha", multipla: true, opcoes: [{ chave: "demorou", pt: "Demorou muito" }, { chave: "demorou", pt: "Repetida" }, { pt: "sem chave" }] },
+        REGRA,
+        { ...REGRA, pergunta: { pt: "A mesma chave outra vez" } },
+      ],
+    },
+  });
+  assert.deepEqual(c.inqueritos.lista.map((r) => r.chave), ["erro_por_omissao", "amostra", "escolha", "facilidade_do_pagamento"]);
+  const escolha = c.inqueritos.lista.find((r) => r.chave === "escolha")!;
+  assert.deepEqual(escolha.opcoes, [{ chave: "demorou", pt: "Demorou muito", en: "Demorou muito" }]);
+  assert.equal(escolha.multipla, true);
+});
+
+test("2.6 a cache é a resposta anterior inteira, e não só a amostragem e o nível", async () => {
+  // O defeito: guardava-se a configuração já lida, com os nomes do SDK, e ao reler
+  // o `normalizar` procurava os nomes do fio. O detalhado, as mensagens expostas, o
+  // rastreio individual e os inquéritos voltavam todos ao valor por omissão num
+  // arranque sem rede.
+  const loja = memoria();
+  const dados = {
+    amostragem: 1, nivel: "padrao", captura: [], versao: 9, amostragem_detalhado: 0.25,
+    mensagens_expostas: ["saldo_insuficiente"], rastreio_individual: true,
+    inqueritos: { lista: [REGRA] },
+  };
+  const br1 = criarBrowser("<p></p>", { loja });
+  br1.responder(() => ({ estado: 200, corpo: JSON.stringify({ sucesso: true, dados }) }));
+  const doServidor = await obter(br1.ambiente(), "http://ingest.local", "uxda_des_t");
+
+  const br2 = criarBrowser("<p></p>", { loja });
+  br2.responder(() => { throw new Error("sem rede"); });
+  const daCacheAgora = await obter(br2.ambiente(), "http://ingest.local", "uxda_des_t");
+  assert.equal(daCacheAgora.origem, "cache");
+  assert.deepEqual(daCacheAgora.config, doServidor.config);
+  assert.equal(daCacheAgora.config.amostragemDetalhado, 0.25);
+  assert.equal(daCacheAgora.config.rastreioIndividual, true);
+  assert.deepEqual(daCacheAgora.config.mensagensExpostas, ["saldo_insuficiente"]);
+  assert.equal(daCacheAgora.config.inqueritos.lista.length, 1);
+});

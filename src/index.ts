@@ -24,6 +24,7 @@ import { contextoDe } from "./captura/contexto.ts";
 import { ligarRede } from "./captura/rede.ts";
 import { capturaTipo, obter as obterConfig } from "./config/remoto.ts";
 import { validar } from "./event/validar.ts";
+import { ligarInqueritos, type ResumoDeInqueritos } from "./inquerito/index.ts";
 
 export const SERVIDOR_POR_OMISSAO = "https://ingest.uxda.io";
 
@@ -43,6 +44,8 @@ export interface Diagnostico {
   msNoFioPrincipal: number;
   foraDoFioPrincipal: boolean;
   errosInternos: number;
+  /** Quantas regras de inquérito, o último gatilho e o último motivo. Nada do que foi respondido. */
+  inqueritos: ResumoDeInqueritos;
 }
 
 export interface Uxda {
@@ -88,6 +91,15 @@ export interface Uxda {
    * que não tem explicação nenhuma no ecrã.
    */
   erroTecnico(chave: string, propriedades?: Record<string, unknown>): void;
+  /**
+   * Pede um inquérito pela chave, a partir do código da instituição (RF-PER-04).
+   *
+   * **Salta o sorteio, e não salta mais nada.** A fadiga do dispositivo, a pergunta
+   * ao servidor, o atraso da regra e o limite de um por sessão valem na mesma: quem
+   * chama pelo código decide o momento, e não decide quantas vezes a mesma pessoa é
+   * questionada. Devolve `true` quando o componente apareceu.
+   */
+  inquerito(chave: string): Promise<boolean>;
   /** Força o envio do que está na fila. */
   descarregar(): Promise<void>;
   /** Desliga tudo, sem deixar ouvintes atrás. */
@@ -166,6 +178,31 @@ export function iniciar(op: Opcoes): Uxda {
   const ecraDe = (): string => chaveDeEcra(janela?.location?.pathname ?? "/", janela?.location?.hash ?? "");
   let ecraForcado = "";
 
+  // Os inquéritos do RF-PER (cartões 14.1 e 14.2). Ligam-se já, e só começam a
+  // disparar quando a configuração chega: antes dela não há regra nenhuma.
+  //
+  // **O envio vai direto pelo ambiente, e não pelo trabalhador**: a elegibilidade
+  // precisa de ler a resposta, e uma resposta a um inquérito é um pedido por
+  // pessoa, e não um lote que valha a pena tirar do fio principal.
+  const inqueritos = ligarInqueritos({
+    janela,
+    documento,
+    armazenamento: amb.armazenamento,
+    agora: () => amb.agora(),
+    aleatorio: typeof amb.aleatorio === "function" ? () => amb.aleatorio!() : Math.random,
+    enviar: (url, corpo, cab, sincrono, metodo) => amb.enviar(url, corpo, cab, sincrono, metodo),
+    servidor,
+    chave: op.chave,
+    configuracao: () => config.inqueritos,
+    identidade: () => ({ anonimo: ident.anonimo, utilizador: ident.utilizador, sessao: ident.sessao }),
+    dispositivo: () => {
+      const d: Record<string, string> = { platform: "web", app_version: String(versaoApp) };
+      for (const [k, v] of Object.entries(ctx)) if (typeof v === "string" && v) d[k] = v;
+      return d;
+    },
+    ecra: () => ecraForcado || ecraDe(),
+  });
+
   const emitirCru = (tipo: string, extras: Record<string, unknown> = {}): void => {
     if (!est.ligado || !amostrado) return;
     const t0 = typeof janela?.performance?.now === "function" ? janela.performance.now() : 0;
@@ -205,6 +242,11 @@ export function iniciar(op: Opcoes): Uxda {
     }
     est.emitidos++;
     fila.juntar(ev);
+    // Os gatilhos dos inquéritos leem **o evento que saiu**, e não o que se tentou
+    // emitir: um evento que o nível corta ou que a validação recusa não existe para
+    // o servidor, e um inquérito que ele disparasse ficava ligado a nada. Dentro da
+    // medição do fio principal, porque é custo do SDK como outro qualquer.
+    inqueritos.observar(ev);
     if (t0) est.msFio += janela.performance.now() - t0;
   };
 
@@ -244,6 +286,15 @@ export function iniciar(op: Opcoes): Uxda {
     // Sementes diferentes: quem está na amostra de ser medido não tem de ser a
     // mesma gente que está na amostra do detalhe.
     noDetalhe = naAmostra("detalhado:" + ident.anonimo, config.amostragemDetalhado);
+    // Os gatilhos de arranque de sessão (o abandono da sessão anterior e a
+    // amostragem) correm **antes** do primeiro evento desta: o primeiro ecrã pode
+    // corresponder ao início da mesma tarefa, e reabri-la antes de ler a anterior
+    // apagava o abandono que se queria perguntar.
+    //
+    // E só para quem está na amostra de medição. Um inquérito vale pelo cruzamento
+    // com o comportamento medido (RF-PER-13, RF-PER-15), e sobre quem não é medido
+    // não há tentativa a que o ligar nem evento que o dispare.
+    inqueritos.arrancar();
     if (op.automatico !== false) {
       ligacao = ligarCaptura(janela, documento, nucleo);
       ligacaoRede = ligarRede(janela, nucleo, servidor, {
@@ -277,11 +328,12 @@ export function iniciar(op: Opcoes): Uxda {
       if (documento?.visibilityState === "hidden") {
         ligacao?.esconder();
         void fila.fechar();
+        inqueritos.guardar();
       } else {
         ligacao?.mostrar();
       }
     };
-    const aoSair = () => { ligacao?.esconder(); void fila.fechar(); };
+    const aoSair = () => { ligacao?.esconder(); void fila.fechar(); inqueritos.guardar(); };
     janela?.addEventListener?.("visibilitychange", aoEsconder, true);
     janela?.addEventListener?.("pagehide", aoSair, true);
     desligarCiclo.push(() => janela?.removeEventListener?.("visibilitychange", aoEsconder, true));
@@ -291,7 +343,10 @@ export function iniciar(op: Opcoes): Uxda {
     await fila.descarregar();
   }, undefined);
 
-  void arrancar();
+  // Guardado, para o `inquerito()` poder esperar pela configuração: uma
+  // instituição que pede um inquérito logo no carregamento da página não pode
+  // receber um `false` só por ter chegado antes da resposta do servidor.
+  const pronto = arrancar();
 
   const api: Uxda = {
     track: protegido("uxda.track", (nome: string, extras: Record<string, unknown> = {}) => {
@@ -346,10 +401,17 @@ export function iniciar(op: Opcoes): Uxda {
       ligacao?.mensagemTecnica(String(chave).slice(0, 256), props);
     }, undefined),
 
+    inquerito: protegidoAsync("uxda.inquerito", async (chave: string): Promise<boolean> => {
+      await pronto;
+      if (!est.ligado || !amostrado) return false;
+      return inqueritos.pedir(String(chave).slice(0, 128));
+    }, false),
+
     descarregar: protegidoAsync("uxda.descarregar", async () => { await fila.descarregar(); }, undefined),
 
     parar: protegido("uxda.parar", () => {
       est.ligado = false;
+      inqueritos.desligar();
       ligacao?.desligar();
       ligacaoRede?.desligar();
       for (const d of desligarCiclo.splice(0)) d();
@@ -369,10 +431,12 @@ export function iniciar(op: Opcoes): Uxda {
       msNoFioPrincipal: Math.round(est.msFio * 100) / 100,
       foraDoFioPrincipal: !!trabalhador?.ativo,
       errosInternos: errosInternos().length,
+      inqueritos: inqueritos.resumo(),
     }), {
       versao: VERSAO, ambiente: ambienteNome, amostrado: false, configuracao: CONFIGURACAO_SEGURA,
       origemDaConfiguracao: "erro", identidade: ident, fila: fila.estado(), eventosEmitidos: 0,
       eventosRecusados: 0, msNoFioPrincipal: 0, foraDoFioPrincipal: false, errosInternos: 0,
+      inqueritos: { regras: 0, ultimoGatilho: "", ultimoMotivo: "erro", aVista: false, respostasEnviadas: 0 },
     }),
   };
 

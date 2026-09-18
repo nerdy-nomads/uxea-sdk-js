@@ -32,6 +32,7 @@ import { ligarDeslocamento } from "./deslocamento.ts";
 import { ligarCampos } from "./campos.ts";
 import { ligarProgressao, type EstadoTerminal } from "./progressao.ts";
 import { ligarMensagens, type TipoDeMensagem } from "./mensagens.ts";
+import { eventoForaDaCaptura } from "./fora.ts";
 
 export interface Emissor {
   (tipo: string, extras?: Record<string, unknown>): void;
@@ -108,9 +109,16 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
   // relatório de erros da aplicação anfitriã, que passa a ter avarias nossas com
   // a cara dela. Foi a bateria de injeção de falhas do cartão 2.7 que apanhou
   // isto, com um elemento que lançava ao ser interrogado.
+  //
+  // E **o que é do próprio SDK não se ouve** (cartão 14.1): um clique no componente
+  // de avaliação chega aqui com o alvo trocado pelo hospedeiro dele, e a marca no
+  // hospedeiro é o que o deixa de fora. Ver `fora.ts`.
   const ouvir = (alvo: any, evento: string, fn: any, opcoes?: any) => {
     if (!alvo || typeof alvo.addEventListener !== "function") return;
-    const seguro = protegido(`captura.${evento}`, fn, undefined);
+    const seguro = protegido(`captura.${evento}`, (e: any) => {
+      if (eventoForaDaCaptura(e)) return;
+      fn(e);
+    }, undefined);
     alvo.addEventListener(evento, seguro, opcoes ?? true);
     desligadores.push(() => alvo.removeEventListener(evento, seguro, opcoes ?? true));
   };

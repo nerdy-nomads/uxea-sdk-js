@@ -64,7 +64,7 @@ Os cartões `2.1` a `2.7` estão fechados. A integração é isto, e mais nada:
 | `tools/orcamento.ts` | Os dois orçamentos, que falham a compilação no CI |
 
 ```bash
-npm run check      # tipos, 86 ensaios, empacotamento e os dois orçamentos
+npm run check      # tipos, 233 ensaios, empacotamento e os dois orçamentos
 npm run build      # dist/uxda.js (CDN, arranca sozinho) e dist/uxda.mjs (npm)
 ./exemplo/servir.sh <chave> 8091     # a loja de ensaio, num browser a sério
 ```
@@ -73,10 +73,10 @@ npm run build      # dist/uxda.js (CDN, arranca sozinho) e dist/uxda.mjs (npm)
 
 | O quê | Medido | Limite |
 |---|---|---|
-| Tamanho do pacote | **27,4 KB** (10,4 KB comprimido) | 300 KB (`RNF-SDK-02`) |
-| Fio principal, por evento capturado | **0,031 ms** no computador, **0,236 ms** num telemóvel de um núcleo | 1 ms |
+| Tamanho do pacote | **76,3 KB** (27,6 KB comprimido), com o componente de avaliação da fase 14 | 300 KB (`RNF-SDK-02`) |
+| Fio principal, por evento capturado | **0,038 ms** no computador (fase 14); **0,236 ms** num telemóvel de um núcleo, medido na fase 2 | 1 ms |
 | Tráfego | **524 bytes** por evento entregue | - |
-| Ensaios | 85, incluindo fuga de conteúdo e injeção de falhas | - |
+| Ensaios | 233, incluindo fuga de conteúdo e injeção de falhas | - |
 
 O ensaio no telemóvel é um emulador Android com **um núcleo** e 1 GB de memória.
 A bateria não se mede lá (o medidor do emulador é sintético, e responde
@@ -109,7 +109,7 @@ quando já o conhece.
 
 ## A API pública
 
-Nove funções, e nenhuma é obrigatória para o SDK medir. Todas passam pela
+Dez funções, e nenhuma é obrigatória para o SDK medir. Todas passam pela
 barreira do `RNF-SDK-01`: um erro interno devolve um valor seguro e nunca chega à
 aplicação anfitriã.
 
@@ -123,6 +123,7 @@ aplicação anfitriã.
 | `uxda.terminal(estado)` | Fecha a tentativa sem ambiguidade: `sucesso`, `erro`, `abandonado` ou `expirado` |
 | `uxda.mensagem(chave, tipo, extras?)` | Declara uma mensagem apresentada ao utilizador. Para o que o SDK não vê sozinho: um `canvas`, uma notificação do sistema, ou uma aplicação que prefere declarar a chave |
 | `uxda.erroTecnico(chave, props?)` | Declara um erro que **ninguém viu no ecrã** (`RF-MSG-06`): uma promessa rejeitada, uma resposta ilegível, um passo que falhou em silêncio |
+| `uxda.inquerito(chave)` | Pede um inquérito pelo código da instituição (`RF-PER-04`). **Salta o sorteio e não salta mais nada**: a fadiga, a pergunta ao servidor e o limite de um por sessão valem na mesma. Devolve `true` quando o componente apareceu |
 | `uxda.descarregar()` | Força o envio do que está na fila |
 | `uxda.parar()` | Desliga tudo, sem deixar ouvintes atrás |
 | `uxda.diagnostico()` | O que o SDK sabe: identidade, fila, configuração, custo no fio principal e erros internos |
@@ -215,6 +216,56 @@ acredita nele.
 **TypeScript**, sem dependências de execução. Empacotado com `esbuild` e
 distribuído por CDN e por npm. A auditoria está em [`AUDITORIA.md`](AUDITORIA.md).
 
+## O componente de avaliação: aparece sozinho, e nunca pergunta de mais
+
+Fase 14, cartões `14.1` e `14.2`. O contrato inteiro está em
+[`docs/contrato-das-respostas.md`](../../docs/contrato-das-respostas.md), e o desenho
+no [ADR 0034](../../docs/adr/0034-uma-resposta-e-anonima-ate-alguem-decidir.md).
+
+**Não é preciso escrever uma linha.** As regras chegam na configuração remota
+(`inqueritos` do `GET /v1/config`), e o SDK avalia os gatilhos sobre os eventos que
+ele próprio emite: depois de concluir uma tarefa, depois de a abandonar (no arranque da
+sessão seguinte), depois de um erro, na primeira utilização de uma funcionalidade, ou
+por amostragem. Mudar uma regra na consola muda o que a sessão seguinte pergunta, sem
+publicar a aplicação.
+
+| Peça | O que faz |
+|---|---|
+| `src/inquerito/regras.ts` | Os critérios das definições de tarefa, avaliados sobre um evento: os mesmos campos e os mesmos oito operadores do `core/definition` |
+| `src/inquerito/gatilhos.ts`, `estado.ts` | Os cinco gatilhos, e o que sobrevive entre sessões (a tentativa começada e não acabada, a primeira utilização já vista) |
+| `src/inquerito/fadiga.ts` | A primeira linha da fadiga, no dispositivo. **Quem decide é o servidor** |
+| `src/inquerito/envio.ts` | A elegibilidade antes de mostrar, e a resposta com uma repetição e o mesmo `resposta_id` |
+| `src/inquerito/componente.ts` | O cartão, num `Shadow DOM`, com o tema da instituição |
+| `src/captura/fora.ts` | O que a captura nunca vê: o próprio componente |
+
+**As regras que não se dobram:**
+
+- **Uma em dez por omissão.** Depois do gatilho há um sorteio com a amostragem da regra,
+  depois a fadiga do dispositivo, depois a pergunta ao servidor. **Sem resposta do
+  servidor, não se mostra.** E nunca mais de um inquérito por sessão.
+- **Não bloqueia a página.** É um cartão fixo num canto, sem película por cima, sem
+  prender o foco (`role="dialog"`, `aria-modal="false"`); fecha-se com `Esc` ou com o
+  botão. Visto num browser a sério: com o cartão aberto, os botões da loja continuaram a
+  responder.
+- **O comentário sai mascarado.** Pela mesma função das mensagens, com um chão por cima
+  que tira todos os algarismos e arrobas: o servidor recusa um comentário com conteúdo, e
+  uma resposta inteira perdida por um "passo 3" era um mau negócio. A bateria de fuga
+  enche a página de segredos, responde com um cartão e um correio no comentário, e lê o
+  tráfego todo.
+- **O componente não se captura a si próprio.** O anfitrião do `Shadow DOM` está fora da
+  captura, e há um ensaio que o prova: nenhum `campo`, `tecla` ou `toque` sai de lá.
+- **Um erro interno não chega à loja.** Tudo passa pela barreira do `RNF-SDK-01`, e um
+  ensaio força um erro no desenho do cartão.
+
+Os cinco formatos: esforço (1 a 7), satisfação (1 a 5), recomendação (0 a 10), escolha
+múltipla e campo livre, com o comentário opcional nos quatro primeiros. O tema (cores,
+tipografia, cantos e idioma) vem da consola.
+
+**Visto a correr contra a ingestão verdadeira** (loja de ensaio, 2026-09-14): o cartão
+apareceu com o tema da consola (verde institucional, Georgia, cantos de 20 px), a
+resposta de esforço chegou à tabela com o comentário `o cartão {id} foi recusado,
+escrevam para {email}`, e a de escolha múltipla com as duas opções escolhidas.
+
 ## Os cartões que o constroem
 
 | Cartão | O que acrescenta |
@@ -229,7 +280,7 @@ distribuído por CDN e por npm. A auditoria está em [`AUDITORIA.md`](AUDITORIA.
 | `4.1` a `4.5` | Captura granular e agregação no dispositivo |
 | `5.1` a `5.4` | Mensagens de sistema, mascaramento, testes de fuga |
 | `9.1` | Coordenadas do toque, caixa do elemento, ordem da interação e profundidade de deslocamento |
-| `14.1` | Componente de avaliação embutido |
+| `14.1`, `14.2` | Componente de avaliação embutido, gatilhos remotos e controlo de fadiga |
 | `18.1`, `18.2` | Mascaramento por omissão e testes de fuga alargados |
 
 ## O rastreio individual: duas condições, e nunca uma fotografia

@@ -24,6 +24,7 @@
  * campo é o retrato completo dele.
  */
 import { protegido } from "../safe.ts";
+import { eventoForaDaCaptura } from "./fora.ts";
 
 export interface ContextoDeCampo {
   emitir(tipo: string, extras?: Record<string, unknown>): void;
@@ -132,9 +133,15 @@ export function ligarCampos(janela: any, documento: any, ctx: ContextoDeCampo): 
   let ultimoComFoco = "";
   let escondido = false;
 
+  // **O comentário de um inquérito não é um campo da aplicação** (cartão 14.1): medir
+  // a hesitação e os caracteres apagados de quem escreve uma opinião sobre a própria
+  // aplicação era medir como alguém a critica. Ver `fora.ts`.
   const ouvir = (alvo: any, evento: string, fn: any) => {
     if (!alvo || typeof alvo.addEventListener !== "function") return;
-    const seguro = protegido(`captura.${evento}`, fn, undefined);
+    const seguro = protegido(`captura.${evento}`, (e: any) => {
+      if (eventoForaDaCaptura(e)) return;
+      fn(e);
+    }, undefined);
     alvo.addEventListener(evento, seguro, true);
     desligadores.push(() => alvo.removeEventListener(evento, seguro, true));
   };

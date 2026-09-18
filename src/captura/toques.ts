@@ -43,6 +43,7 @@
 import { protegido } from "../safe.ts";
 import { acionavel } from "../identity/index.ts";
 import type { ElementoLike } from "../identity/element.ts";
+import { foraDaCaptura, eventoForaDaCaptura } from "./fora.ts";
 
 export interface ContextoDeToque {
   emitir(tipo: string, extras?: Record<string, unknown>): void;
@@ -230,9 +231,14 @@ export function ligarToques(janela: any, documento: any, ctx: ContextoDeToque): 
     temporizador = janela?.setTimeout?.(protegido("captura.rajada", fecharRajada, undefined), JANELA_DE_RAJADA_MS);
   };
 
+  // O componente de avaliação do SDK não conta como interação com a aplicação: nem
+  // como toque, nem como primeira interação do ecrã (cartão 14.1, `fora.ts`).
   const ouvir = (alvo: any, evento: string, fn: any) => {
     if (!alvo || typeof alvo.addEventListener !== "function") return;
-    const seguro = protegido(`captura.${evento}`, fn, undefined);
+    const seguro = protegido(`captura.${evento}`, (e: any) => {
+      if (eventoForaDaCaptura(e)) return;
+      fn(e);
+    }, undefined);
     alvo.addEventListener(evento, seguro, true);
     desligadores.push(() => alvo.removeEventListener(evento, seguro, true));
   };
@@ -246,8 +252,6 @@ export function ligarToques(janela: any, documento: any, ctx: ContextoDeToque): 
   };
 
   ouvir(documento, "pointerdown", (e: any) => {
-    primeiraInteracao();
-
     const x = typeof e?.clientX === "number" ? e.clientX : 0;
     const y = typeof e?.clientY === "number" ? e.clientY : 0;
     // O que está mesmo debaixo do dedo, e não o que o browser resolveu despachar:
@@ -255,6 +259,12 @@ export function ligarToques(janela: any, documento: any, ctx: ContextoDeToque): 
     const sob = typeof documento?.elementFromPoint === "function"
       ? documento.elementFromPoint(x, y)
       : e?.target;
+    // O que está debaixo do dedo também pode ser o componente, e o `elementFromPoint`
+    // devolve-o pelo hospedeiro, como o alvo do evento. **Antes da primeira
+    // interação**, que também não é dele.
+    if (foraDaCaptura(sob)) return;
+    primeiraInteracao();
+
     const alvo = subirAteAcionavel(sob);
     const chave = alvo ? ctx.chaveDe(alvo) : undefined;
 
