@@ -9,6 +9,7 @@
  */
 import type { Ambiente, Evento, Resposta } from "../core/tipos.ts";
 import { Armazem } from "./armazem.ts";
+import { confirmarErrosReportados, errosPorReportar } from "../safe.ts";
 
 export interface Limites {
   /** Eventos por lote. */
@@ -134,6 +135,9 @@ export class Fila {
     if (lote.length === 0) return;
     this.enviando = true;
     this.ultimoEnvio = this.amb.agora();
+    // Os erros internos do SDK viajam no mesmo lote (cartão 17.3): só o sítio, o tipo e
+    // quantas vezes, e nunca a mensagem.
+    const erros = errosPorReportar();
     try {
       const corpo = JSON.stringify({
         versao_protocolo: 1,
@@ -141,10 +145,12 @@ export class Fila {
         versao_sdk: VERSAO,
         enviado_em: new Date(this.amb.agora()).toISOString(),
         eventos: lote,
+        ...(erros.length > 0 ? { erros_sdk: erros } : {}),
       });
       const r: Resposta = await this.amb.enviar(this.url, corpo, this.cabecalhos(), sincrono);
       if (r.estado >= 200 && r.estado < 300) {
         this.armazem.confirmar(lote);
+        confirmarErrosReportados(erros);
         this.enviados += lote.length;
         this.bytes += corpo.length;
         this.tentativas = 0;
@@ -154,6 +160,7 @@ export class Fila {
         // Recusa definitiva (chave errada, corpo inválido): repetir não muda
         // nada e a fila crescia para sempre. Deita-se fora, com o motivo.
         this.armazem.confirmar(lote);
+        confirmarErrosReportados(erros);
         this.ultimoErro = `recusado ${r.estado}`;
         this.falhas++;
       } else {

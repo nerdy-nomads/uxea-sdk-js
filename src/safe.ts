@@ -20,6 +20,60 @@ export function errosInternos(): ReadonlyArray<Registo> {
 
 export function limparErros(): void {
   registo.length = 0;
+  porReportar.clear();
+}
+
+/**
+ * Os erros por reportar ao servidor, contados por sítio e por tipo. Cartão 17.3,
+ * RF-OPS-10, ADR 0045.
+ *
+ * **Só o sítio e o nome do tipo, e nunca a mensagem**: a mensagem de um erro pode trazer
+ * o que a pessoa escreveu (um `JSON.parse` de um valor de campo, por exemplo), e nada
+ * que venha de um campo sai do dispositivo (RNF-PRI-01). O nome do tipo (`TypeError`,
+ * `SyntaxError`) e o sítio do SDK onde falhou chegam para agrupar e reproduzir.
+ */
+export type ErroAgregado = { onde: string; tipo: string; contagem: number };
+
+const MAX_POR_REPORTAR = 20;
+const porReportar = new Map<string, ErroAgregado>();
+
+function nomeDoTipo(erro: unknown): string {
+  const n = (erro as { name?: unknown } | null)?.name;
+  const t = typeof n === "string" ? n : erro === null ? "null" : typeof erro;
+  return /^[A-Za-z0-9_.$:-]{1,60}$/.test(t) ? t : "Erro";
+}
+
+function contar(onde: string, erro: unknown): void {
+  const tipo = nomeDoTipo(erro);
+  const sitio = /^[A-Za-z0-9_.$:-]{1,80}$/.test(onde) ? onde : "desconhecido";
+  const k = sitio + "|" + tipo;
+  const atual = porReportar.get(k);
+  if (atual) {
+    if (atual.contagem < 10000) atual.contagem++;
+  } else if (porReportar.size < MAX_POR_REPORTAR) {
+    porReportar.set(k, { onde: sitio, tipo, contagem: 1 });
+  }
+}
+
+function anotar(onde: string, erro: unknown): void {
+  if (registo.length < MAX) registo.push({ quando: Date.now(), erro, onde });
+  contar(onde, erro);
+}
+
+/** O que vai no próximo lote. Uma cópia: o que se envia não se mexe enquanto viaja. */
+export function errosPorReportar(): ErroAgregado[] {
+  return [...porReportar.values()].map((e) => ({ ...e }));
+}
+
+/** Tira o que o servidor já recebeu, e deixa o que entretanto aconteceu. */
+export function confirmarErrosReportados(enviados: ReadonlyArray<ErroAgregado>): void {
+  for (const e of enviados) {
+    const k = e.onde + "|" + e.tipo;
+    const atual = porReportar.get(k);
+    if (!atual) continue;
+    atual.contagem -= e.contagem;
+    if (atual.contagem <= 0) porReportar.delete(k);
+  }
 }
 
 /** Envolve uma função para ela nunca poder lançar. Devolve `alternativa` se falhar. */
@@ -32,7 +86,7 @@ export function protegido<A extends unknown[], R>(
     try {
       return fn(...args);
     } catch (erro) {
-      if (registo.length < MAX) registo.push({ quando: Date.now(), erro, onde });
+      anotar(onde, erro);
       return alternativa;
     }
   };
@@ -48,7 +102,7 @@ export function protegidoAsync<A extends unknown[], R>(
     try {
       return await fn(...args);
     } catch (erro) {
-      if (registo.length < MAX) registo.push({ quando: Date.now(), erro, onde });
+      anotar(onde, erro);
       return alternativa;
     }
   };

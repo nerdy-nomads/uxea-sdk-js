@@ -59,7 +59,7 @@ Os cartões `2.1` a `2.7` estão fechados. A integração é isto, e mais nada:
 | `src/config/` | Configuração remota, com cache e valor por omissão que mede tudo |
 | `src/core/trabalhador.ts` | O envio fora do fio principal, e o recuo para quando não dá |
 | `src/identity/` | Os cinco sinais de identidade de elementos, do cartão `0.2` |
-| `src/safe.ts` | A barreira de erro. Nenhum erro interno chega à aplicação anfitriã |
+| `src/safe.ts` | A barreira de erro. Nenhum erro interno chega à aplicação anfitriã, e **cada um conta-se** por sítio e tipo, e segue no lote seguinte em `erros_sdk`, sem a mensagem (ADR 0045) |
 | `exemplo/` | Uma loja de ensaio **sem uma linha de instrumentação**, para ver a correr |
 | `tools/orcamento.ts` | Os dois orçamentos, que falham a compilação no CI |
 
