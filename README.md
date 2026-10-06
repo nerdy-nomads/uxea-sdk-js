@@ -148,6 +148,17 @@ import { iniciar } from "@uxda/sdk-js";
 const uxda = iniciar({ chave: "uxda_pro_...", versao: "4.2.0" });
 ```
 
+## A bateria de fuga cobre toda a captura
+
+`src/fuga-total.test.ts` (cartão 18.2) corre o SDK inteiro sobre uma página com segredos
+em todo o lado: no endereço, nas ligações, nos rótulos, nos atributos de teste, nos pedidos
+de rede da aplicação e nos nomes que a API recebe, nos três níveis e com o rastreio
+individual ligado. Falha se um segredo sair em qualquer forma (escrito, codificado, em
+minúsculas, só os algarismos), e **falha se algum tipo de evento do esquema não tiver sido
+percorrido**: um caminho de captura novo sem ensaio aqui faz o CI cair no dia em que entra.
+Em volume, mil pessoas com dados gerados: 4 000 valores pessoais, 2 793 eventos, 0 fugas.
+Corre em `npm run fuga`, que é um passo próprio do CI.
+
 ## O que a aplicação lhe passa sai mascarado
 
 As propriedades do `track()` e a operação do `mensagem()` e do `erroTecnico()` passam por

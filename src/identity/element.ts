@@ -9,7 +9,7 @@
  * Nada aqui lê conteúdo escrito pelo utilizador. O sinal do rótulo lê texto **da
  * aplicação**, mascara-o e guarda só o resumo (RNF-PRI-01).
  */
-import { preparar, resumo } from "./mask.ts";
+import { chao, preparar, resumo } from "./mask.ts";
 
 /** Só o que precisamos de um elemento. Serve o DOM do browser e o do harness. */
 export interface ElementoLike {
@@ -83,15 +83,18 @@ const ID_GERADO = [
   /^[a-z]+-(?=[0-9a-z]*\d)[0-9a-z]{5,}$/i,  // css-in-js: sufixo alfanumérico com dígito
 ];
 
+// O chão vale também aqui (cartão 18.2): um atributo de teste escrito com um valor do
+// cliente lá dentro (`bi_005123456LA041`, `titular-ana@exemplo.ao`) é um identificador
+// direto no elemento. A bateria do 18.2 apanhou-o a sair tal e qual.
 export function sinalTestId(el: ElementoLike): string | null {
   for (const a of ATRIBUTOS_TESTE) {
     const v = el.getAttribute(a);
-    if (v && v.trim()) return `${a}=${v.trim()}`;
+    if (v && v.trim()) return `${a}=${chao(v.trim())}`;
   }
   const nome = el.getAttribute("name");
-  if (nome && nome.trim()) return `name=${nome.trim()}`;
+  if (nome && nome.trim()) return `name=${chao(nome.trim())}`;
   const id = el.getAttribute("id");
-  if (id && id.trim() && !ID_GERADO.some((re) => re.test(id.trim()))) return `id=${id.trim()}`;
+  if (id && id.trim() && !ID_GERADO.some((re) => re.test(id.trim()))) return `id=${chao(id.trim())}`;
   return null;
 }
 
@@ -203,7 +206,10 @@ export function normalizarDestino(bruto: string): string | null {
   d = d.replace(/^[a-z]+:\/\/[^/]+/i, "");   // fora o protocolo e o anfitrião
   d = d.split(/[?#]/)[0] ?? d;                // fora a consulta e o fragmento
   if (!d.startsWith("/")) d = "/" + d;
-  const segs = d.split("/").filter(Boolean).map((s) => (SEGMENTO_ID.some((re) => re.test(s)) ? "{id}" : s));
+  // E um segmento onde o chão encontre alguma coisa (um contacto `+244923000111`, um
+  // número com separadores) também é um identificador: o 18.2 apanhou um contacto num
+  // `action` de formulário a sair tal e qual.
+  const segs = d.split("/").filter(Boolean).map((s) => (SEGMENTO_ID.some((re) => re.test(s)) || chao(s) !== s || /\d{6,}/.test(s.replace(/[^\d]/g, "")) ? "{id}" : s));
   return "/" + segs.join("/");
 }
 

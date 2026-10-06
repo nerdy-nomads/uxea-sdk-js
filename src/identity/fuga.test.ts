@@ -16,7 +16,7 @@ import { parseHTML } from "linkedom";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { acionavel, sinais, type ElementoLike } from "./element.ts";
+import { acionavel, normalizarDestino, sinais, sinalTestId, type ElementoLike } from "./element.ts";
 
 const CACHE = join(dirname(fileURLToPath(import.meta.url)), "../../tools/survival/cache");
 
@@ -76,4 +76,16 @@ test("nem sequer o comprimento do que foi escrito é inferível", () => {
   (a.querySelector("input") as any).setAttribute("value", "a");
   (b.querySelector("input") as any).setAttribute("value", "a".repeat(500));
   assert.equal(capturarTudo(a), capturarTudo(b));
+});
+
+
+test("18.2 regressão: um atributo de teste e um segmento do caminho com um valor do cliente saem mascarados", () => {
+  // Os dois defeitos que a bateria do 18.2 apanhou. Sem o chão no atributo de teste e
+  // no segmento, estes valores saíam tal e qual na chave do elemento.
+  assert.equal(normalizarDestino("/pagar/+244923000111"), "/pagar/{id}");
+  assert.equal(normalizarDestino("/clientes/ana.silva@exemplo.ao/perfil"), "/clientes/{id}/perfil");
+  assert.equal(normalizarDestino("/contas/923 000 111"), "/contas/{id}");
+  assert.equal(normalizarDestino("/produtos/cartao-de-credito"), "/produtos/cartao-de-credito");
+  const el = { tagName: "INPUT", getAttribute: (a: string) => (a === "data-testid" ? "bi_005123456LA041" : null) } as any;
+  assert.equal(sinalTestId(el), "data-testid=bi_{id}");
 });
