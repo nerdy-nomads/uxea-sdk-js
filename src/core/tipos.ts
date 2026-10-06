@@ -35,6 +35,14 @@ export interface Opcoes {
   versao?: string;
   /** Desliga a captura automática, para quem só quer `track`. */
   automatico?: boolean;
+  /**
+   * O consentimento (cartão 18.1, ADR 0047). Com `exigido`, o SDK **não faz nada**
+   * (não lê nem escreve no dispositivo, não pede a configuração, não ouve nada)
+   * até a aplicação chamar `consentimento(true)`. Por omissão é `implicito`: a
+   * instituição trata o fundamento da medição de outra forma, e a pessoa pode
+   * recusar na mesma com `consentimento(false)`.
+   */
+  consentimento?: "exigido" | "implicito";
   /** Só para ensaios: relógio, armazenamento e transporte substituíveis. */
   ambiente?: Partial<Ambiente>;
 }
@@ -110,6 +118,12 @@ export interface Configuracao {
    * recusa o evento que os traga.
    */
   mensagensExpostas: string[];
+  /**
+   * As propriedades da instituição cujo valor sai sem a máscara das mensagens
+   * (cartão 18.1). Vazia por omissão, como a de cima, e com o mesmo chão: números,
+   * identificadores e correio saem sempre mascarados.
+   */
+  propriedadesExpostas: string[];
   /** Que tipos de evento capturar. Vazio quer dizer todos os do nível. */
   captura: string[];
   /** Versão da configuração, para se saber qual estava em vigor. */
@@ -223,6 +237,7 @@ export const CONFIGURACAO_SEGURA: Configuracao = {
   amostragemDetalhado: 0,
   rastreioIndividual: false,
   mensagensExpostas: [],
+  propriedadesExpostas: [],
   captura: [],
   versao: 0,
   inqueritos: SEM_INQUERITOS,

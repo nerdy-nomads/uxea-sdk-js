@@ -190,6 +190,15 @@ export class Fila {
     }
   }
 
+  /** Esvazia a fila de vez, sem enviar nada: a pessoa retirou o consentimento (cartão 18.1). */
+  esvaziar(): void {
+    if (this.temporizador !== null) {
+      try { (this.amb as any).janela?.clearTimeout?.(this.temporizador); } catch { /* segue */ }
+      this.temporizador = null;
+    }
+    this.armazem.esvaziar();
+  }
+
   /** Última tentativa antes de a página morrer. Vai por `sendBeacon`, se houver. */
   async fechar(): Promise<void> {
     // A escrita pendente sai primeiro: se o envio não chegar a acontecer, o que

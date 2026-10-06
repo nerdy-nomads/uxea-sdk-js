@@ -180,6 +180,13 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   // é uma bateria que ninguém sabe se funciona, e é assim que uma proteção morre:
   // não com um alarme, com um silêncio.
   const br = criarBrowser(PAGINA, { caminho: "/checkout" });
+  // Desde o cartão 18.1 o valor de uma propriedade sai mascarado por omissão, e o
+  // nome de uma pessoa já não atravessa sozinho. A fuga só se consegue pelo caminho
+  // que resta, e é por esse que se introduz: **a instituição expor a propriedade**.
+  // É uma decisão dela, e a bateria tem de a ver quando acontece.
+  br.responder((p) => p.url.includes("/v1/config")
+    ? { estado: 200, corpo: JSON.stringify({ sucesso: true, dados: { amostragem: 1, nivel: "padrao", exposicao: { propriedades: ["segmento"] } } }) }
+    : { estado: 202, corpo: JSON.stringify({ sucesso: true, dados: { aceites: 1 } }) });
   const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
@@ -209,6 +216,15 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   await br2.avancar(20000);
   assert.ok(!JSON.stringify(br2.pedidos).includes("Ana Maria da Silva"),
     "sem a fuga introduzida, nada devia sair");
+  // E o mesmo valor do campo, na mesma propriedade, sem a exposição: sai mascarado.
+  const br4 = criarBrowser(PAGINA, { caminho: "/checkout" });
+  const uxda4 = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br4.ambiente() });
+  await br4.avancar(10);
+  uxda4.track("depuracao", { properties: { segmento: "Ana Maria da Silva" } });
+  await uxda4.descarregar();
+  await br4.avancar(20000);
+  assert.ok(!JSON.stringify(br4.pedidos).includes("Ana Maria da Silva"),
+    "sem a instituição expor a propriedade, o valor saiu sem máscara");
 
   // E o chão que o validador impõe: a mesma propriedade com um número de
   // documento lá dentro **nem sai**, porque a regra `sem_conteudo` do esquema diz
@@ -222,8 +238,11 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   await br3.avancar(20000);
   assert.ok(!JSON.stringify(br3.pedidos).includes("005123456LA041"),
     "um número de documento numa propriedade permitida atravessou o validador");
-  assert.ok(uxda3.diagnostico().eventosRecusados >= 1,
-    "o evento devia ter sido recusado no dispositivo, e com o motivo escrito");
+  // Desde o 18.1 o número nem chega ao validador: sai mascarado, e o evento chega
+  // na mesma, com a medição inteira e o marcador no lugar do documento.
+  const doTres = br3.eventos().find((e) => e.message_key === "depuracao");
+  assert.ok(doTres && !/\d{5,}/.test(String(doTres.properties?.segmento ?? "")),
+    "o evento devia chegar com o número de documento mascarado");
 });
 
 test("5.4 em volume: quinhentas mensagens com conteúdo interpolado, e nada escapa", async () => {

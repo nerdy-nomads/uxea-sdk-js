@@ -36,6 +36,25 @@ const REGRAS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b\d+\b/g, "{numero}"],
 ];
 
+/**
+ * O chão (cartão 18.1): o que sai mascarado **em qualquer texto**, até nos nomes que a
+ * aplicação dá a um ecrã, a um passo, a um evento ou a uma mensagem. São nomes de
+ * programador, e a máscara das mensagens destruía-os ("Pagamento Cartão" virava
+ * `{nome}`); mas um correio, um número de conta ou uma referência longa lá dentro não
+ * são nome nenhum, e nunca saem.
+ */
+const REGRAS_CHAO: ReadonlyArray<readonly [RegExp, string]> = [
+  [/[^\s@/|]+@[^\s@/|]+\.[^\s@/|]+/g, "{email}"],
+  [/[A-Za-z]{0,3}\d[\dA-Za-z]{7,}/g, "{id}"],
+  [/\d{6,}/g, "{id}"],
+];
+
+export function chao(texto: string): string {
+  let saida = String(texto ?? "");
+  for (const [re, marcador] of REGRAS_CHAO) saida = saida.replace(re, marcador);
+  return saida;
+}
+
 /** Substitui valores variáveis por marcadores, para agrupar variantes do mesmo texto. */
 export function mascarar(texto: string): string {
   let saida = texto;

@@ -19,6 +19,7 @@ export class Armazem {
   private mem: Evento[] = [];
   private descartados = 0;
   private sujo = false;
+  private selado = false;
   private bytes = 2;
   private readonly loja: Armazenamento | null;
   private readonly chave: string;
@@ -68,9 +69,21 @@ export class Armazem {
     });
   }
 
+  /**
+   * Esvazia e sela (cartão 18.1): a pessoa retirou o consentimento. Apaga o que
+   * está em memória e no dispositivo, e uma escrita que já estava agendada deixa
+   * de escrever, senão voltava a pôr no disco o que acabou de se apagar.
+   */
+  esvaziar(): void {
+    this.selado = true;
+    this.mem = [];
+    this.bytes = 2;
+    try { this.loja?.removeItem(this.chave); } catch { /* segue */ }
+  }
+
   /** Escreve mesmo, agora. Chamado no fecho da página, que não espera por nada. */
   gravarJa(): void {
-    if (!this.loja) return;
+    if (!this.loja || this.selado) return;
     try {
       this.loja.setItem(this.chave, JSON.stringify(this.mem));
     } catch {
@@ -87,6 +100,7 @@ export class Armazem {
   }
 
   juntar(ev: Evento): void {
+    if (this.selado) return;
     this.mem.push(ev);
     this.bytes += JSON.stringify(ev).length + 1;
     // O tamanho é contado à medida, e **não** medido de novo em cada evento:

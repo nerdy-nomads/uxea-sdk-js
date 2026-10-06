@@ -193,7 +193,9 @@ export function sinalRotulo(el: ElementoLike): string | null {
  * um elemento diferente e o inventário enchia-se de conteúdo em vez de
  * funcionalidades.
  */
-const SEGMENTO_ID = [/^\d+$/, /^[0-9a-f]{8,}$/i, /^[a-z]{0,3}\d{4,}[a-z0-9]*$/i, /^[0-9a-f-]{20,}$/i];
+// E o correio num segmento (cartão 18.1): `/u/ana@exemplo.ao` não é uma funcionalidade,
+// é uma pessoa no caminho.
+const SEGMENTO_ID = [/^\d+$/, /^[0-9a-f]{8,}$/i, /^[a-z]{0,3}\d{4,}[a-z0-9]*$/i, /^[0-9a-f-]{20,}$/i, /@/];
 
 export function normalizarDestino(bruto: string): string | null {
   let d = bruto.trim();

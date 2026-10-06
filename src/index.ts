@@ -25,6 +25,8 @@ import { ligarRede } from "./captura/rede.ts";
 import { capturaTipo, obter as obterConfig } from "./config/remoto.ts";
 import { validar } from "./event/validar.ts";
 import { ligarInqueritos, type ResumoDeInqueritos } from "./inquerito/index.ts";
+import { apagarOQueGuardamos, CHAVE_RECUSA, propriedadesDoCliente, textoDoCliente } from "./privacidade.ts";
+import { chao } from "./identity/mask.ts";
 
 export const SERVIDOR_POR_OMISSAO = "https://ingest.uxda.io";
 
@@ -46,6 +48,13 @@ export interface Diagnostico {
   errosInternos: number;
   /** Quantas regras de inquérito, o último gatilho e o último motivo. Nada do que foi respondido. */
   inqueritos: ResumoDeInqueritos;
+  /**
+   * O estado do consentimento (cartão 18.1): `implicito` (a instituição não o
+   * exige), `pendente` (exige, e ainda não veio: nada corre), `dado` ou `recusado`.
+   */
+  consentimento: "implicito" | "pendente" | "dado" | "recusado";
+  /** Os nomes das propriedades que a instituição passou e o esquema não conhece, e que por isso não saíram. */
+  propriedadesDescartadas: string[];
 }
 
 export interface Uxda {
@@ -104,6 +113,14 @@ export interface Uxda {
   descarregar(): Promise<void>;
   /** Desliga tudo, sem deixar ouvintes atrás. */
   parar(): void;
+  /**
+   * O sinal de consentimento da pessoa, transmitido pela aplicação (cartão 18.1,
+   * `RNF-PRI-12`). `true` arranca a captura, se a integração a exigir e ainda não
+   * tiver arrancado. `false` para tudo **já**, apaga a fila e os identificadores
+   * deste dispositivo, e guarda só a recusa, para a página seguinte não começar a
+   * medir antes de a aplicação voltar a dizer. Não há configuração que o contorne.
+   */
+  consentimento(dado: boolean): void;
   diagnostico(): Diagnostico;
 }
 
@@ -122,7 +139,7 @@ interface Estado {
   msFio: number;
 }
 
-export function iniciar(op: Opcoes): Uxda {
+function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentimento"]): Uxda {
   const amb: Ambiente = { ...ambienteDoBrowser(op.ambiente?.janela ?? (globalThis as any).window), ...(op.ambiente ?? {}) } as Ambiente;
   const janela = amb.janela;
   const documento = amb.documento;
@@ -131,6 +148,7 @@ export function iniciar(op: Opcoes): Uxda {
   const est: Estado = { ligado: true, emitidos: 0, recusados: 0, msFio: 0 };
 
   const ident = identidade(amb.armazenamento, amb.agora());
+  const descartadas = new Set<string>();
   let config: Configuracao = CONFIGURACAO_SEGURA;
   let origemConfig = "omissao";
   let amostrado = true;
@@ -352,7 +370,18 @@ export function iniciar(op: Opcoes): Uxda {
     track: protegido("uxda.track", (nome: string, extras: Record<string, unknown> = {}) => {
       // A marcação manual é a exceção, e é para o que o browser não deixa ver.
       // Vai como evento personalizado, com a chave do que o integrador marcou.
-      emitirCru("personalizado", { ...extras, message_key: String(nome).slice(0, 256) });
+      //
+      // **As propriedades passam pelo mascaramento por omissão** (cartão 18.1):
+      // aceitam-se dentro de `properties` ou soltas, uma chave que o esquema não
+      // conhece fica de fora (e conta-se), e um valor de texto sai mascarado.
+      const { properties, ...soltas } = (extras && typeof extras === "object" ? extras : {}) as Record<string, unknown>;
+      const f = propriedadesDoCliente({ ...soltas, ...(properties && typeof properties === "object" ? properties as object : {}) },
+        config.propriedadesExpostas);
+      for (const d of f.descartadas) if (descartadas.size < 50) descartadas.add(d);
+      emitirCru("personalizado", {
+        message_key: chao(String(nome)).slice(0, 256),
+        ...(Object.keys(f.propriedades).length > 0 ? { properties: f.propriedades } : {}),
+      });
     }, undefined),
 
     identificar: protegidoAsync("uxda.identificar", async (idPseudonimizado: string) => {
@@ -376,12 +405,12 @@ export function iniciar(op: Opcoes): Uxda {
     }, undefined),
 
     ecra: protegido("uxda.ecra", (nome: string) => {
-      ecraForcado = String(nome).slice(0, 256);
+      ecraForcado = chao(String(nome)).slice(0, 256);
       emitirCru("ecra", { screen_key: ecraForcado });
     }, undefined),
 
     passo: protegido("uxda.passo", (nome: string) => {
-      ligacao?.passo(String(nome).slice(0, 64));
+      ligacao?.passo(chao(String(nome)).slice(0, 64));
     }, undefined),
 
     terminal: protegido("uxda.terminal", (estado: "sucesso" | "erro" | "abandonado" | "expirado") => {
@@ -389,16 +418,18 @@ export function iniciar(op: Opcoes): Uxda {
     }, undefined),
 
     mensagem: protegido("uxda.mensagem", (chave: string, tipo: "erro" | "aviso" | "sucesso" | "info", extras?: Record<string, unknown>) => {
-      ligacao?.mensagem(String(chave).slice(0, 256), tipo, extras);
+      // A operação é texto da instituição, e sai mascarada como o resto (18.1).
+      const e = extras?.["operacao"] ? { ...extras, operacao: textoDoCliente(extras["operacao"], "operacao", config.propriedadesExpostas) } : extras;
+      ligacao?.mensagem(chao(String(chave)).slice(0, 256), tipo, e);
     }, undefined),
 
     erroTecnico: protegido("uxda.erroTecnico", (chave: string, propriedades?: Record<string, unknown>) => {
       const props: Record<string, unknown> = { classe_erro: "sistema" };
       const operacao = propriedades?.["operacao"];
-      if (operacao) props["operacao"] = String(operacao).slice(0, 32);
+      if (operacao) props["operacao"] = textoDoCliente(operacao, "operacao", config.propriedadesExpostas).slice(0, 32);
       const codigo = propriedades?.["codigo_http"];
       if (typeof codigo === "number") props["codigo_http"] = codigo;
-      ligacao?.mensagemTecnica(String(chave).slice(0, 256), props);
+      ligacao?.mensagemTecnica(chao(String(chave)).slice(0, 256), props);
     }, undefined),
 
     inquerito: protegidoAsync("uxda.inquerito", async (chave: string): Promise<boolean> => {
@@ -432,15 +463,100 @@ export function iniciar(op: Opcoes): Uxda {
       foraDoFioPrincipal: !!trabalhador?.ativo,
       errosInternos: errosInternos().length,
       inqueritos: inqueritos.resumo(),
+      consentimento: consentimento(),
+      propriedadesDescartadas: [...descartadas],
     }), {
       versao: VERSAO, ambiente: ambienteNome, amostrado: false, configuracao: CONFIGURACAO_SEGURA,
       origemDaConfiguracao: "erro", identidade: ident, fila: fila.estado(), eventosEmitidos: 0,
       eventosRecusados: 0, msNoFioPrincipal: 0, foraDoFioPrincipal: false, errosInternos: 0,
       inqueritos: { regras: 0, ultimoGatilho: "", ultimoMotivo: "erro", aVista: false, respostasEnviadas: 0 },
+      consentimento: consentimento(), propriedadesDescartadas: [],
     }),
+    // O consentimento decide-se na fachada, por cima desta instância (ver `iniciar`).
+    // Aqui só se faz a metade que precisa de chegar à fila: esvaziá-la sem enviar.
+    consentimento: protegido("uxda.consentimento.fila", (dado: boolean) => {
+      if (dado === false) fila.esvaziar();
+    }, undefined),
   };
 
   return api;
+}
+
+/** O diagnóstico de um SDK que ainda não arrancou, ou que foi parado por recusa. */
+function diagnosticoInerte(op: Opcoes, consentimento: Diagnostico["consentimento"]): Diagnostico {
+  return {
+    versao: VERSAO, ambiente: ambienteDaChave(op.chave), amostrado: false, configuracao: CONFIGURACAO_SEGURA,
+    origemDaConfiguracao: "nenhuma", identidade: { anonimo: "", dispositivo: "", sessao: "", utilizador: null },
+    fila: { pendentes: 0, enviados: 0, bytes: 0, falhas: 0, perdidos: 0, ultimoErro: "", proximaTentativaEm: 0 } as ReturnType<Fila["estado"]>,
+    eventosEmitidos: 0, eventosRecusados: 0, msNoFioPrincipal: 0, foraDoFioPrincipal: false, errosInternos: errosInternos().length,
+    inqueritos: { regras: 0, ultimoGatilho: "", ultimoMotivo: "sem_consentimento", aVista: false, respostasEnviadas: 0 },
+    consentimento, propriedadesDescartadas: [],
+  };
+}
+
+/** Lê a recusa guardada **sem escrever nada**: o `localStorage` cru, e não o ambiente, que sonda com uma escrita. */
+function recusaGuardada(op: Opcoes): boolean {
+  try {
+    const loja = op.ambiente?.armazenamento ?? ((op.ambiente?.janela ?? (globalThis as any).window)?.localStorage ?? null);
+    return loja?.getItem?.(CHAVE_RECUSA) === "recusado";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Arranca o SDK, **por trás do consentimento** (cartão 18.1, `RNF-PRI-12`, ADR 0047).
+ *
+ * Devolve sempre a mesma fachada, e a captura só existe por trás dela quando pode
+ * existir: com `consentimento: "exigido"` só depois de `consentimento(true)`, e em
+ * qualquer modo nunca depois de `consentimento(false)` (até a aplicação voltar a
+ * dizer que sim). Sem captura, a fachada não toca no dispositivo: nem uma leitura
+ * da cache, nem um identificador, nem um pedido. O sinal decide-o a aplicação, e
+ * não há configuração do servidor que o contorne.
+ */
+export function iniciar(op: Opcoes): Uxda {
+  const exigido = op.consentimento === "exigido";
+  let estado: Diagnostico["consentimento"] = recusaGuardada(op) ? "recusado" : exigido ? "pendente" : "implicito";
+  let dentro: Uxda | null = null;
+  const ler = () => estado;
+  const arrancar = () => { if (!dentro) dentro = iniciarCaptura(op, ler); };
+  if (estado === "implicito") arrancar();
+
+  const lojaCrua = () => {
+    try { return op.ambiente?.armazenamento ?? ((op.ambiente?.janela ?? (globalThis as any).window)?.localStorage ?? null); }
+    catch { return null; }
+  };
+
+  return {
+    track: (n, e) => dentro?.track(n, e),
+    identificar: async (id) => { await dentro?.identificar(id); },
+    esquecer: () => dentro?.esquecer(),
+    ecra: (n) => dentro?.ecra(n),
+    passo: (n) => dentro?.passo(n),
+    terminal: (e) => dentro?.terminal(e),
+    mensagem: (c, t, e) => dentro?.mensagem(c, t, e),
+    erroTecnico: (c, p) => dentro?.erroTecnico(c, p),
+    inquerito: async (c) => (dentro ? dentro.inquerito(c) : false),
+    descarregar: async () => { await dentro?.descarregar(); },
+    parar: () => dentro?.parar(),
+    diagnostico: () => (dentro ? dentro.diagnostico() : diagnosticoInerte(op, estado)),
+    consentimento: protegido("uxda.consentimento", (dado: boolean) => {
+      const loja = lojaCrua();
+      if (dado === true) {
+        try { loja?.removeItem?.(CHAVE_RECUSA); } catch { /* segue */ }
+        estado = exigido ? "dado" : "implicito";
+        arrancar();
+        return;
+      }
+      // Recusa: para já, sem esperar pelo lote, e apaga o que ficou no dispositivo.
+      estado = "recusado";
+      dentro?.consentimento(false);
+      dentro?.parar();
+      dentro = null;
+      apagarOQueGuardamos(loja);
+      try { loja?.setItem?.(CHAVE_RECUSA, "recusado"); } catch { /* sem armazenamento, a recusa vale para esta página */ }
+    }, undefined),
+  };
 }
 
 /**
@@ -458,6 +574,7 @@ export function arranqueAutomatico(janela: any = (globalThis as any).window): Ux
       servidor: el.getAttribute("data-servidor") ?? undefined,
       versao: el.getAttribute("data-versao") ?? undefined,
       automatico: el.getAttribute("data-automatico") !== "false",
+      consentimento: el.getAttribute("data-consentimento") === "exigido" ? "exigido" : "implicito",
     });
     janela.uxda = uxda;
     return uxda;

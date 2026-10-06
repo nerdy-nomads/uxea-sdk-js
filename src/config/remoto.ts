@@ -69,9 +69,13 @@ export function normalizar(c: any): Configuracao {
   // A lista de permissões do RNF-PRI-04. **Vazia por omissão**, e é isso que
   // "mascaramento por omissão" quer dizer: uma configuração que não chega, ou que
   // chega estragada, deixa tudo mascarado, e nunca o contrário.
-  const mensagensExpostas = Array.isArray(c?.mensagens_expostas)
-    ? c.mensagens_expostas.filter((x: unknown) => typeof x === "string" && x).slice(0, 200)
+  // A lista de permissões do cartão 18.1 (`exposicao`) cobre as mensagens e as
+  // propriedades, e a lista antiga das mensagens continua a ler-se: as duas somam.
+  const lista = (v: unknown): string[] => Array.isArray(v)
+    ? v.filter((x: unknown): x is string => typeof x === "string" && x !== "").slice(0, 200)
     : [];
+  const mensagensExpostas = [...new Set([...lista(c?.mensagens_expostas), ...lista(c?.exposicao?.mensagens)])].slice(0, 200);
+  const propriedadesExpostas = lista(c?.exposicao?.propriedades);
   // **Só `true` liga.** Qualquer outra coisa (ausente, nulo, a cadeia "true", um
   // número) deixa desligado: uma configuração meio escrita não pode ligar o
   // rastreio individual, e é a mesma regra da lista de mensagens expostas.
@@ -84,7 +88,7 @@ export function normalizar(c: any): Configuracao {
   } catch { /* uma configuração hostil fica sem inquéritos, e a captura segue */ }
   return {
     amostragem, nivel, captura, versao, amostragemDetalhado,
-    rastreioIndividual, mensagensExpostas, inqueritos,
+    rastreioIndividual, mensagensExpostas, propriedadesExpostas, inqueritos,
   };
 }
 

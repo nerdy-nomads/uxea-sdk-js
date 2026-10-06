@@ -126,6 +126,7 @@ aplicação anfitriã.
 | `uxda.inquerito(chave)` | Pede um inquérito pelo código da instituição (`RF-PER-04`). **Salta o sorteio e não salta mais nada**: a fadiga, a pergunta ao servidor e o limite de um por sessão valem na mesma. Devolve `true` quando o componente apareceu |
 | `uxda.descarregar()` | Força o envio do que está na fila |
 | `uxda.parar()` | Desliga tudo, sem deixar ouvintes atrás |
+| `uxda.consentimento(dado)` | O sinal de consentimento da pessoa (`RNF-PRI-12`, ADR 0047). Com `data-consentimento="exigido"` no `script`, nada corre até `consentimento(true)`; `consentimento(false)` para já, apaga a fila e os identificadores do dispositivo e guarda só a recusa |
 | `uxda.diagnostico()` | O que o SDK sabe: identidade, fila, configuração, custo no fio principal e erros internos |
 
 ```html
@@ -146,6 +147,15 @@ Por npm, para quem quer decidir o momento do arranque:
 import { iniciar } from "@uxda/sdk-js";
 const uxda = iniciar({ chave: "uxda_pro_...", versao: "4.2.0" });
 ```
+
+## O que a aplicação lhe passa sai mascarado
+
+As propriedades do `track()` e a operação do `mensagem()` e do `erroTecnico()` passam por
+um ponto só (`src/privacidade.ts`): uma chave que o esquema não conhece não sai (e conta-se
+em `diagnostico().propriedadesDescartadas`), e um valor de texto sai com as regras de uma
+mensagem sem chave. Só a lista de permissões da instituição levanta a máscara, e nunca o
+chão: correio, números longos e referências saem sempre mascarados, também nos nomes de
+ecrã, passo, evento e mensagem. Os ensaios estão em `src/privacidade.test.ts`. ADR 0047.
 
 ## Mensagens: dê-nos a chave, e o texto não sai do dispositivo
 
