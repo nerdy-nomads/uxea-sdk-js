@@ -148,6 +148,14 @@ import { iniciar } from "@uxda/sdk-js";
 const uxda = iniciar({ chave: "uxda_pro_...", versao: "4.2.0" });
 ```
 
+## O que capta, campo a campo
+
+[`CAMPOS.md`](CAMPOS.md) lista cada campo e cada propriedade que este SDK envia, com a
+finalidade e a ligação à linha do código que o produz, neste repositório e no do outro SDK.
+É gerada a partir do esquema (`python3 scripts/campos-capturados.py`, na raiz do projeto) e
+**um ensaio falha se o SDK enviar um campo que ela não lista**, ou se uma ligação deixar de
+apontar para uma linha que produz o campo (cartão 18.5).
+
 ## A bateria de fuga cobre toda a captura
 
 `src/fuga-total.test.ts` (cartão 18.2) corre o SDK inteiro sobre uma página com segredos
