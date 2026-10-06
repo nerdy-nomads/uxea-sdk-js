@@ -1,7 +1,7 @@
 /**
  * Entrada para correr no browser, usada no ensaio do cartão 0.2.
  *
- * Expõe a captura em `window.__uxda` para se poder ver o resultado sobre uma
+ * Expõe a captura em `window.__uxea` para se poder ver o resultado sobre uma
  * aplicação real, que é o que a Definição de pronto exige: visto a correr, e não
  * só verde em testes.
  */
@@ -33,7 +33,7 @@ function pintar(obs: Observado[]): void {
     testid: "#2e6b4a", destino: "#2f5d7c", rotulo: "#8a4b2a", caminho: "#7c2f3d", papel: "#5b6270",
   };
   const camada = document.createElement("div");
-  camada.id = "uxda-camada";
+  camada.id = "uxea-camada";
   camada.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483647";
   for (const o of obs) {
     if (o.rect.w < 4 || o.rect.h < 4) continue;
@@ -46,4 +46,4 @@ function pintar(obs: Observado[]): void {
   document.body.appendChild(camada);
 }
 
-(window as any).__uxda = { capturar, pintar, errosInternos };
+(window as any).__uxea = { capturar, pintar, errosInternos };

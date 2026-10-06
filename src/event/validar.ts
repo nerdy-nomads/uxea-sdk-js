@@ -1,5 +1,5 @@
 /**
- * Validador de eventos do SDK web. Lê o **mesmo** `schema.json` que o `uxda-core`.
+ * Validador de eventos do SDK web. Lê o **mesmo** `schema.json` que o `uxea-core`.
  *
  * Não é uma segunda implementação do esquema: é uma segunda implementação do
  * *motor de validação*, sobre a mesma descrição. O que não pode divergir é a

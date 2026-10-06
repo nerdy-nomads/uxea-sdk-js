@@ -20,7 +20,7 @@ import type { Ambiente, Armazenamento, Configuracao } from "../core/tipos.ts";
 import { CONFIGURACAO_SEGURA } from "../core/tipos.ts";
 import { normalizarInqueritos } from "../inquerito/configuracao.ts";
 
-const CHAVE_CACHE = "uxda.config";
+const CHAVE_CACHE = "uxea.config";
 /** Seis horas: uma emergência resolve-se na sessão seguinte, não daqui a um dia. */
 export const VALIDADE_MS = 6 * 60 * 60 * 1000;
 
@@ -102,7 +102,7 @@ export async function obter(amb: Ambiente, servidor: string, chave: string): Pro
   try {
     // GET, e não POST: a configuração é uma leitura, e assim a resposta pode ser
     // guardada pela cache do browser e pelo CDN à frente da ingestão.
-    const r = await amb.enviar(`${servidor}/v1/config`, "", { "X-UXDA-Key": chave }, false, "GET");
+    const r = await amb.enviar(`${servidor}/v1/config`, "", { "X-UXEA-Key": chave }, false, "GET");
     if (r.estado >= 200 && r.estado < 300 && r.corpo) {
       const corpo = JSON.parse(r.corpo);
       const dados = corpo?.dados ?? corpo;

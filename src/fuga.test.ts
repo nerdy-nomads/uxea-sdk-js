@@ -72,7 +72,7 @@ async function tudoOQueSai(nivel: "essencial" | "padrao" | "detalhado"): Promise
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, captura: [], versao: 1 } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   // Uma pessoa a preencher o formulário: escreve, apaga, cola, volta atrás.
@@ -111,16 +111,16 @@ async function tudoOQueSai(nivel: "essencial" | "padrao" | "detalhado"): Promise
   disparar(br.documento, "#pagar", "click");
   disparar(br.documento, "#f", "submit");
   disparar(br.documento, "#nome", "invalid");
-  uxda.track("comprovativo_descarregado", { valor_monetario: 12400 });
-  uxda.passo("confirmacao");
-  uxda.mensagem("cartao_recusado", "erro");
-  uxda.erroTecnico("resposta_ilegivel", { operacao: "pagamento" });
-  uxda.identificar("Ana Maria da Silva");
-  uxda.terminal("erro");
+  uxea.track("comprovativo_descarregado", { valor_monetario: 12400 });
+  uxea.passo("confirmacao");
+  uxea.mensagem("cartao_recusado", "erro");
+  uxea.erroTecnico("resposta_ilegivel", { operacao: "pagamento" });
+  uxea.identificar("Ana Maria da Silva");
+  uxea.terminal("erro");
   (br.documento as any).visibilityState = "hidden";
   disparar(br.documento, "body", "visibilitychange");
 
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(30000);
 
   const bruto = JSON.stringify(br.pedidos);
@@ -187,7 +187,7 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ sucesso: true, dados: { amostragem: 1, nivel: "padrao", exposicao: { propriedades: ["segmento"] } } }) }
     : { estado: 202, corpo: JSON.stringify({ sucesso: true, dados: { aceites: 1 } }) });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   const el = br.documento.querySelector("#bi")! as any;
@@ -199,8 +199,8 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   // lista de chaves dá a sensação de já proteger, e ela protege a chave e não o
   // valor.
   el.value = "Ana Maria da Silva";
-  uxda.track("depuracao", { properties: { segmento: el.value } });
-  await uxda.descarregar();
+  uxea.track("depuracao", { properties: { segmento: el.value } });
+  await uxea.descarregar();
   await br.avancar(20000);
   const comFuga = JSON.stringify(br.pedidos);
   assert.ok(comFuga.includes("Ana Maria da Silva"),
@@ -208,20 +208,20 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
 
   // E sem ela, o mesmo caminho não deixa passar nada.
   const br2 = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda2 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br2.ambiente() });
+  const uxea2 = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br2.ambiente() });
   await br2.avancar(10);
   (br2.documento.querySelector("#bi") as any).value = "Ana Maria da Silva";
-  uxda2.track("depuracao", { properties: { segmento: "empresas" } });
-  await uxda2.descarregar();
+  uxea2.track("depuracao", { properties: { segmento: "empresas" } });
+  await uxea2.descarregar();
   await br2.avancar(20000);
   assert.ok(!JSON.stringify(br2.pedidos).includes("Ana Maria da Silva"),
     "sem a fuga introduzida, nada devia sair");
   // E o mesmo valor do campo, na mesma propriedade, sem a exposição: sai mascarado.
   const br4 = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda4 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br4.ambiente() });
+  const uxea4 = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br4.ambiente() });
   await br4.avancar(10);
-  uxda4.track("depuracao", { properties: { segmento: "Ana Maria da Silva" } });
-  await uxda4.descarregar();
+  uxea4.track("depuracao", { properties: { segmento: "Ana Maria da Silva" } });
+  await uxea4.descarregar();
   await br4.avancar(20000);
   assert.ok(!JSON.stringify(br4.pedidos).includes("Ana Maria da Silva"),
     "sem a instituição expor a propriedade, o valor saiu sem máscara");
@@ -231,10 +231,10 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   // que um valor de propriedade é texto curto sem dígitos longos, e agora os dois
   // validadores impõem-no.
   const br3 = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda3 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br3.ambiente() });
+  const uxea3 = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br3.ambiente() });
   await br3.avancar(10);
-  uxda3.track("depuracao", { properties: { segmento: "005123456LA041" } });
-  await uxda3.descarregar();
+  uxea3.track("depuracao", { properties: { segmento: "005123456LA041" } });
+  await uxea3.descarregar();
   await br3.avancar(20000);
   assert.ok(!JSON.stringify(br3.pedidos).includes("005123456LA041"),
     "um número de documento numa propriedade permitida atravessou o validador");
@@ -251,7 +251,7 @@ test("5.4 em volume: quinhentas mensagens com conteúdo interpolado, e nada esca
   // e com valores diferentes em cada uma, provam que não há um recanto do
   // mascaramento que só falhe para uma forma de escrever o montante.
   const br = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const avisos = br.documento.querySelector("#avisos")!;
 
@@ -281,7 +281,7 @@ test("5.4 em volume: quinhentas mensagens com conteúdo interpolado, e nada esca
     // era descartada e a bateria corria sobre uma só.
     await br.avancar(2000);
   }
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(30000);
 
   const mensagens = br.eventos().filter((e: any) => e.event_type === "mensagem");
@@ -329,7 +329,7 @@ test("14.1 um inquérito respondido com segredos no comentário, numa página ch
   I.servir(br, I.inqueritos([I.regra({
     gatilho: "apos_erro", criterios: [], inicio: [], formato: "esforco", comentario: true, atraso_ms: 800,
   })]), { nivel: "detalhado", rastreioIndividual: true });
-  const uxda = await I.arrancar(br);
+  const uxea = await I.arrancar(br);
 
   // A página com tudo preenchido, como na bateria de cima.
   const campos = ["nome", "email", "bi", "iban", "cartao", "senha", "morada"];
@@ -364,8 +364,8 @@ test("14.1 um inquérito respondido com segredos no comentário, numa página ch
   disparar(br.documento, "#cartao", "focusout");
   await I.enviarResposta(br);
 
-  uxda.terminal("erro");
-  await uxda.descarregar();
+  uxea.terminal("erro");
+  await uxea.descarregar();
   await br.avancar(30000);
 
   const enviadas = br.pedidos.filter((p) => p.url.endsWith("/v1/respostas") && p.estado === 202);

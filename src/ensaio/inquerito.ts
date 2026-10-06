@@ -14,7 +14,7 @@
  * a sério; os que provam que o componente funciona despacham lá dentro.
  */
 import { criarBrowser, type Browser, type Pedido } from "./duplo.ts";
-import { iniciar, type Uxda } from "../index.ts";
+import { iniciar, type Uxea } from "../index.ts";
 import type { Resposta } from "../core/tipos.ts";
 
 export const SERVIDOR = "https://ingest.local";
@@ -83,16 +83,16 @@ export function servir(br: Browser, config: Record<string, unknown> | unknown, o
 
 export interface ComSdk {
   br: Browser;
-  uxda: Uxda;
+  uxea: Uxea;
 }
 
 /** Arranca o SDK inteiro sobre um browser de ensaio, com o sorteio controlado. */
 export async function arrancar(
   br: Browser, aleatorio: () => number = () => 0,
-): Promise<Uxda> {
-  const uxda = iniciar({ chave: "uxda_des_inqueritos", servidor: SERVIDOR, ambiente: { ...br.ambiente(), aleatorio } });
+): Promise<Uxea> {
+  const uxea = iniciar({ chave: "uxea_des_inqueritos", servidor: SERVIDOR, ambiente: { ...br.ambiente(), aleatorio } });
   await br.avancar(10);
-  return uxda;
+  return uxea;
 }
 
 export async function comSdk(
@@ -100,11 +100,11 @@ export async function comSdk(
 ): Promise<ComSdk> {
   const br = criarBrowser(html, { caminho: op.caminho ?? "/pagamento" });
   servir(br, config, op);
-  const uxda = await arrancar(br, op.aleatorio);
-  return { br, uxda };
+  const uxea = await arrancar(br, op.aleatorio);
+  return { br, uxea };
 }
 
-export const hospedeiro = (br: Browser): any => br.documento.querySelector("uxda-inquerito");
+export const hospedeiro = (br: Browser): any => br.documento.querySelector("uxea-inquerito");
 export const raiz = (br: Browser): any => hospedeiro(br)?.shadowRoot ?? null;
 
 export function despachar(el: any, tipo: string, extras: Record<string, unknown> = {}): void {
@@ -148,8 +148,8 @@ export async function sessaoSeguinte(
   const br = criarBrowser(html, { caminho: op.caminho ?? "/", loja: anterior.loja });
   await br.avancar(anterior.agora() - br.agora() + (op.depoisMs ?? 31 * 60 * 1000));
   servir(br, config, op);
-  const uxda = await arrancar(br, op.aleatorio);
-  return { br, uxda };
+  const uxea = await arrancar(br, op.aleatorio);
+  return { br, uxea };
 }
 
 /** Um gerador com semente (mulberry32): o mesmo ensaio dá sempre o mesmo número. */

@@ -171,7 +171,7 @@ test("14.2 o livro guarda dias, e expira sozinho no fim do maior dos prazos", ()
 test("14.2 um estado ilegível no armazenamento é um estado vazio", () => {
   for (const lixo of ["isto não é json", "[]", "null", '{"abertas":"x","pedidos":{},"primeiras":7}']) {
     const loja = memoria();
-    loja.setItem("uxda.inqueritos", lixo);
+    loja.setItem("uxea.inqueritos", lixo);
     const e = lerEstado(loja);
     assert.deepEqual(e.abertas, {});
     assert.deepEqual(e.pedidos, []);

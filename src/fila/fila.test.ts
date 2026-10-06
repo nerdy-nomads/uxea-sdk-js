@@ -71,7 +71,7 @@ test("2.4 dez minutos sem rede não perdem um evento, e a anfitriã não dá por
   const br = criarBrowser(`<button id="b">ok</button>`, { caminho: "/tarefa", loja });
   // A rede está em baixo: estado 0 é o que um `fetch` falhado dá.
   br.responder(() => ({ estado: 0, corpo: "" }));
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   // Dez minutos de uso: um clique de trinta em trinta segundos.
@@ -79,7 +79,7 @@ test("2.4 dez minutos sem rede não perdem um evento, e a anfitriã não dá por
     disparar(br.documento, "#b", "click");
     await br.avancar(30000);
   }
-  const diag = uxda.diagnostico();
+  const diag = uxea.diagnostico();
   assert.ok(diag.fila.pendentes >= 20, `ficaram ${diag.fila.pendentes} na fila`);
   assert.equal(diag.fila.perdidos, 0, "perdeu eventos com a rede em baixo");
   assert.equal(diag.errosInternos, 0, "a falha de rede virou erro interno");
@@ -94,7 +94,7 @@ test("2.4 dez minutos sem rede não perdem um evento, e a anfitriã não dá por
   assert.equal(new Set(ids).size, ids.length, "entregou duplicados");
   assert.ok(entregues.filter((e) => e.event_type === "toque").length >= 20,
     `entregou ${entregues.filter((e) => e.event_type === "toque").length} toques de 20`);
-  assert.equal(uxda.diagnostico().fila.pendentes, 0, "ficou coisa por entregar");
+  assert.equal(uxea.diagnostico().fila.pendentes, 0, "ficou coisa por entregar");
   // A ordem é a da captura: a reconstrução da tentativa depende dela.
   const horas = entregues.map((e) => e.occurred_at);
   assert.deepEqual(horas, [...horas].sort(), "os eventos chegaram fora de ordem");
@@ -103,9 +103,9 @@ test("2.4 dez minutos sem rede não perdem um evento, e a anfitriã não dá por
 test("2.4 uma recusa definitiva não fica a repetir para sempre", async () => {
   const br = criarBrowser(`<button id="b">ok</button>`);
   br.responder(() => ({ estado: 401, corpo: '{"erro":"chave inválida"}' }));
-  const uxda = iniciar({ chave: "uxda_des_errada", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_errada", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(60000);
-  const d = uxda.diagnostico();
+  const d = uxea.diagnostico();
   assert.equal(d.fila.pendentes, 0, "uma chave errada não pode encher a fila do cliente");
   assert.match(d.fila.ultimoErro, /recusado 401/);
 });
@@ -113,10 +113,10 @@ test("2.4 uma recusa definitiva não fica a repetir para sempre", async () => {
 test("2.4 o servidor em baixo não faz a aplicação anfitriã falhar", async () => {
   const br = criarBrowser(`<button id="b">ok</button>`);
   br.responder(() => { throw new Error("ligação recusada"); });
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   disparar(br.documento, "#b", "click");
   await br.avancar(120000);
-  assert.ok(uxda.diagnostico().fila.pendentes >= 1);
-  assert.equal(uxda.diagnostico().errosInternos, 0);
+  assert.ok(uxea.diagnostico().fila.pendentes >= 1);
+  assert.equal(uxea.diagnostico().errosInternos, 0);
 });

@@ -21,7 +21,7 @@ const DO_SERVIDOR = new Set([...PAGINA.matchAll(/^- `([a-z_]+)`(?:, `([a-z_]+)`)
 
 test("18.5 cada ligação da página aponta para uma linha que produz o campo", () => {
   let vistas = 0;
-  for (const m of PAGINA.matchAll(/^\| `([a-z_]+)` \|.*?\]\(https:\/\/github\.com\/nerdy-nomads\/uxda-sdk-js\/blob\/master\/([^#)]+)#L(\d+)\)/gm)) {
+  for (const m of PAGINA.matchAll(/^\| `([a-z_]+)` \|.*?\]\(https:\/\/github\.com\/nerdy-nomads\/uxea-sdk-js\/blob\/master\/([^#)]+)#L(\d+)\)/gm)) {
     const [, campo, ficheiro, linha] = m;
     const caminho = join(RAIZ, ficheiro!);
     assert.ok(existsSync(caminho), `${campo}: ${ficheiro} não existe`);

@@ -27,9 +27,9 @@ async function comSdk(html = PAGINA, nivel: "essencial" | "padrao" | "detalhado"
       ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, captura: [], versao: 1 } }) }
       : { estado: 202, corpo: "{}" });
   }
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
-  return { br, uxda };
+  return { br, uxea };
 }
 
 test("2.1 uma linha basta: sem configuração nenhuma, o primeiro ecrã sai", async () => {
@@ -44,21 +44,21 @@ test("2.1 uma linha basta: sem configuração nenhuma, o primeiro ecrã sai", as
   // A chave vai no cabeçalho, e o projeto **não** vai no corpo: quem o decide é
   // o servidor, a partir da chave.
   const pedido = br.pedidos.find((p) => p.url.includes("/v1/eventos"))!;
-  assert.equal(pedido.cabecalhos["X-UXDA-Key"], "uxda_des_teste");
+  assert.equal(pedido.cabecalhos["X-UXEA-Key"], "uxea_des_teste");
   assert.equal(evs[0].project_id, undefined);
 });
 
 test("2.1 o ambiente sai do prefixo da chave", () => {
-  assert.equal(ambienteDaChave("uxda_pro_abc"), "producao");
-  assert.equal(ambienteDaChave("uxda_tes_abc"), "testes");
-  assert.equal(ambienteDaChave("uxda_des_abc"), "desenvolvimento");
+  assert.equal(ambienteDaChave("uxea_pro_abc"), "producao");
+  assert.equal(ambienteDaChave("uxea_tes_abc"), "testes");
+  assert.equal(ambienteDaChave("uxea_des_abc"), "desenvolvimento");
 });
 
 test("2.2 os dez tipos do RF-CAP-04 saem sem uma linha de instrumentação", async () => {
   // No nível **detalhado**, que é o que mantém a sequência completa. No padrão a
   // tecla e o desfoco vivem dentro do agregado por campo, e o ensaio do 4.5
   // fixa essa diferença.
-  const { br, uxda } = await comSdk(PAGINA, "detalhado");
+  const { br, uxea } = await comSdk(PAGINA, "detalhado");
 
   disparar(br.documento, "#pagar", "click");
   disparar(br.documento, "#nome", "focusin");
@@ -71,18 +71,18 @@ test("2.2 os dez tipos do RF-CAP-04 saem sem uma linha de instrumentação", asy
   // Navegação de página única, e depois um recuo a sério.
   br.janela.history.pushState({}, "", "/pagamento");
   await br.avancar(10);
-  br.janela.dispararJanela("popstate", { state: { __uxda: 0 } });
+  br.janela.dispararJanela("popstate", { state: { __uxea: 0 } });
 
   (br.documento as any).visibilityState = "hidden";
   disparar(br.documento, "body", "visibilitychange");
 
   // Erro de rede da aplicação anfitriã: o `fetch` dela falha.
   br.janela.fetch = async () => { throw new Error("sem rede"); };
-  const uxdaRede = br as any;
-  void uxdaRede;
+  const uxeaRede = br as any;
+  void uxeaRede;
   await br.avancar(100);
 
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const tipos = new Set(br.eventos().map((e) => e.event_type));
@@ -96,14 +96,14 @@ test("4.5 o nível padrão emite um evento por campo, e não um por tecla", asyn
   // granular multiplica o volume, e a agregação no dispositivo é a mitigação
   // nomeada no documento. O que se fixa aqui é a diferença entre os dois níveis.
   const guiao = async (nivel: "padrao" | "detalhado") => {
-    const { br, uxda } = await comSdk(PAGINA, nivel);
+    const { br, uxea } = await comSdk(PAGINA, nivel);
     disparar(br.documento, "#nome", "focusin");
     await br.avancar(900);
     disparar(br.documento, "#nome", "input", { inputType: "insertText" });
     disparar(br.documento, "#nome", "input", { inputType: "insertText" });
     disparar(br.documento, "#nome", "input", { inputType: "deleteContentBackward" });
     disparar(br.documento, "#nome", "focusout");
-    await uxda.descarregar();
+    await uxea.descarregar();
     await br.avancar(20000);
     return br.eventos();
   };
@@ -134,7 +134,7 @@ test("3.1 o plano de fundo leva o tempo que a página esteve mesmo à vista", as
   //
   // E é **tempo à vista**, não tempo desde que abriu: um separador aberto de manhã
   // e esquecido não são oito horas de uso.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
 
   await br.avancar(3000);
   (br.documento as any).visibilityState = "hidden";
@@ -162,12 +162,12 @@ test("2.2 a hesitação é medida, e a tecla escrita nunca é lida", async () =>
   // A hesitação é o intervalo entre o foco e a **primeira alteração do texto**, e
   // não a primeira tecla premida: um teclado virtual não envia teclas, e o `Tab`
   // ou o `Shift` não são escrever. É o mesmo sinal que o SDK Android usa.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   disparar(br.documento, "#nome", "focusin");
   await br.avancar(2500);
   disparar(br.documento, "#nome", "input", { inputType: "insertText", data: "s" });
   disparar(br.documento, "#nome", "focusout");
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const campo = br.eventos().find((e) => e.event_type === "campo")!;
@@ -178,9 +178,9 @@ test("2.2 a hesitação é medida, e a tecla escrita nunca é lida", async () =>
 });
 
 test("2.2 `track` marca o que a captura automática não alcança", async () => {
-  const { br, uxda } = await comSdk();
-  uxda.track("comprovativo_descarregado");
-  await uxda.descarregar();
+  const { br, uxea } = await comSdk();
+  uxea.track("comprovativo_descarregado");
+  await uxea.descarregar();
   await br.avancar(20000);
   const ev = br.eventos().find((e) => e.event_type === "personalizado")!;
   assert.ok(ev, "o evento manual não saiu");
@@ -188,9 +188,9 @@ test("2.2 `track` marca o que a captura automática não alcança", async () => 
 });
 
 test("2.2 um clique num ícone dentro do botão conta como o botão", async () => {
-  const { br, uxda } = await comSdk(`<button id="b" data-testid="guardar"><svg id="i"></svg>Guardar</button>`);
+  const { br, uxea } = await comSdk(`<button id="b" data-testid="guardar"><svg id="i"></svg>Guardar</button>`);
   disparar(br.documento, "#i", "click");
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
   const toque = br.eventos().find((e) => e.event_type === "toque")!;
   assert.ok(toque, "o clique não foi capturado");
@@ -198,13 +198,13 @@ test("2.2 um clique num ícone dentro do botão conta como o botão", async () =
 });
 
 test("2.1 parar não deixa ouvintes atrás", async () => {
-  const { br, uxda } = await comSdk();
-  await uxda.descarregar();
+  const { br, uxea } = await comSdk();
+  await uxea.descarregar();
   await br.avancar(20000);
   const antes = br.eventos().length;
-  uxda.parar();
+  uxea.parar();
   disparar(br.documento, "#pagar", "click");
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
   assert.equal(br.eventos().length, antes, "continuou a capturar depois de parar");
 });

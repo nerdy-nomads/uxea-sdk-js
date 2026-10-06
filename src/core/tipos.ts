@@ -3,7 +3,7 @@
  * pela captura, guardado pela fila e validado antes de sair.
  */
 
-/** O evento tal como sai daqui. É o esquema canónico do `uxda-core`. */
+/** O evento tal como sai daqui. É o esquema canónico do `uxea-core`. */
 export interface Evento {
   event_id: string;
   anonymous_id: string;
@@ -31,7 +31,7 @@ export interface Opcoes {
   chave: string;
   /** Endereço da ingestão. Por omissão, o da plataforma. */
   servidor?: string;
-  /** Versão da aplicação anfitriã. Sem ela, lê-se a meta `uxda:version`. */
+  /** Versão da aplicação anfitriã. Sem ela, lê-se a meta `uxea:version`. */
   versao?: string;
   /** Desliga a captura automática, para quem só quer `track`. */
   automatico?: boolean;
@@ -144,7 +144,7 @@ export interface Configuracao {
 /** Os cinco formatos do RF-PER-03. */
 export type FormatoDeInquerito = "esforco" | "satisfacao" | "recomendacao" | "escolha" | "livre";
 
-/** Os cinco gatilhos do RF-PER-04. O `manual` é o de `uxda.inquerito()`, e não se configura. */
+/** Os cinco gatilhos do RF-PER-04. O `manual` é o de `uxea.inquerito()`, e não se configura. */
 export type GatilhoDeInquerito = "apos_conclusao" | "apos_abandono" | "apos_erro" | "primeira_utilizacao" | "amostragem";
 
 /** Uma condição, com a mesma forma e a mesma semântica do `core/definition`. */

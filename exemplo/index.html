@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="uxda:version" content="1.4.0">
+<meta name="uxea:version" content="1.4.0">
 <title>Loja de ensaio: pagar uma encomenda</title>
 <style>
   .zona-morta {
@@ -31,7 +31,7 @@
   footer { max-width: 1080px; margin: 0 auto 40px; padding: 0 22px; color: #6b6560; font-size: 13px; }
 </style>
 <!-- Isto é a integração inteira: uma linha, e mais nada. -->
-<script src="../dist/uxda.js" data-chave="CHAVE_AQUI" data-servidor="http://localhost:8710"></script>
+<script src="../dist/uxea.js" data-chave="CHAVE_AQUI" data-servidor="http://localhost:8710"></script>
 </head>
 <body>
 <header>
@@ -85,7 +85,7 @@
         está instrumentado: são `div` com `role="alert"` e com as classes do
         costume, tal como qualquer aplicação as escreve.
 
-        A primeira traz a **chave** (`data-uxda-mensagem`), e é o caminho que o
+        A primeira traz a **chave** (`data-uxea-mensagem`), e é o caminho que o
         RF-MSG-02 manda preferir: estável, independente do idioma, sem dados lá
         dentro. As outras só têm texto, e é aí que o mascaramento do 5.2 tem de
         funcionar, porque elas trazem montantes, documentos e um nome.
@@ -100,7 +100,7 @@
         configurada na consola dispara (depois de concluir, de abandonar, de um erro, na
         primeira utilização, ou por amostragem), sem esta página escrever uma linha. Os
         botões existem só para o ensaio não depender da sorte do sorteio de uma em dez:
-        chamam `uxda.inquerito(chave)`, que salta o sorteio e não salta a fadiga.
+        chamam `uxea.inquerito(chave)`, que salta o sorteio e não salta a fadiga.
       -->
       <p class="ensaio-inquerito">
         <button type="button" class="secundario" data-inquerito="facilidade_do_pagamento">Pedir a avaliação da facilidade</button>
@@ -139,7 +139,7 @@
   document.getElementById("entrar").addEventListener("click", () => {
     // O único sítio em que esta página chama o SDK. Repare-se no que se passa:
     // o email **não** sai daqui, é resumido no dispositivo.
-    window.uxda?.identificar("ana.silva@exemplo.ao");
+    window.uxea?.identificar("ana.silva@exemplo.ao");
   });
   // O botão lento: fica ocupado dois segundos e não diz nada a ninguém. É onde
   // se vê o toque em carregamento e o toque repetido, que são o sistema a não
@@ -163,7 +163,7 @@
     setTimeout(() => { for (const filho of Array.from(molde.children)) filho.remove(); }, 6000);
   }
   document.getElementById("msg-chave").addEventListener("click", () => {
-    mostrar('<div role="alert" class="alert alert-danger" data-uxda-mensagem="saldo_insuficiente">Saldo insuficiente para esta operação</div>');
+    mostrar('<div role="alert" class="alert alert-danger" data-uxea-mensagem="saldo_insuficiente">Saldo insuficiente para esta operação</div>');
   });
   document.getElementById("msg-texto").addEventListener("click", () => {
     // Montante, documento, data e um nome, tudo lá dentro. É o risco crítico do
@@ -187,14 +187,14 @@
   document.getElementById("msg-tecnico").addEventListener("click", () => {
     // O que corre mal **sem chegar ao ecrã** (RF-MSG-06). Nada aparece à pessoa,
     // e é isso que o torna a causa de abandono mais difícil de explicar.
-    window.uxda?.erroTecnico("resposta_ilegivel", { operacao: "pagamento" });
+    window.uxea?.erroTecnico("resposta_ilegivel", { operacao: "pagamento" });
   });
 
   for (const b of document.querySelectorAll("[data-inquerito]")) {
     b.addEventListener("click", async () => {
       const chave = b.getAttribute("data-inquerito");
-      const apareceu = await window.uxda?.inquerito(chave);
-      const d = window.uxda?.diagnostico?.().inqueritos;
+      const apareceu = await window.uxea?.inquerito(chave);
+      const d = window.uxea?.diagnostico?.().inqueritos;
       document.getElementById("estado-inquerito").textContent = apareceu
         ? `o componente de ${chave} apareceu`
         : `não apareceu: ${d?.ultimoMotivo ?? "sem resposta"}`;
@@ -218,10 +218,10 @@
       // `?sem=1` corre o mesmo percurso com o SDK desligado. É a metade que dá
       // sentido à outra: o custo do SDK é a diferença entre as duas, e não o
       // tempo total, que é sobretudo o browser a despachar eventos.
-      if (params.get("sem") === "1") window.uxda.parar();
+      if (params.get("sem") === "1") window.uxea.parar();
       const alvo = document.getElementById("nome");
       const botao = document.querySelector('[data-testid="botao-pagar"]');
-      const antes = window.uxda.diagnostico();
+      const antes = window.uxea.diagnostico();
       const t0 = performance.now();
       for (let i = 0; i < n; i++) {
         botao.dispatchEvent(new Event("click", { bubbles: true }));
@@ -232,7 +232,7 @@
         }
       }
       const ms = performance.now() - t0;
-      const d = window.uxda.diagnostico();
+      const d = window.uxea.diagnostico();
       const eventos = d.eventosEmitidos - antes.eventosEmitidos;
       const porEvento = ms / Math.max(1, eventos);
       const resumo = `${eventos} eventos, ${ms.toFixed(0)} ms no fio principal, ${porEvento.toFixed(3)} ms por evento`;
@@ -240,18 +240,18 @@
       document.title = resumo;
       // O número segue pelo caminho do produto, para se poder ler com SQL em vez
       // de o transcrever de uma captura de ecrã.
-      window.uxda.track(`orcamento_${porEvento.toFixed(3)}ms_${eventos}ev`);
+      window.uxea.track(`orcamento_${porEvento.toFixed(3)}ms_${eventos}ev`);
       setTimeout(() => {
-        const f = window.uxda.diagnostico().fila;
+        const f = window.uxea.diagnostico().fila;
         const bytes = f.bytes / Math.max(1, f.enviados);
-        window.uxda.track(`trafego_${bytes.toFixed(0)}b_por_evento`);
+        window.uxea.track(`trafego_${bytes.toFixed(0)}b_por_evento`);
         document.getElementById("titulo").textContent = resumo + `, ${bytes.toFixed(0)} bytes por evento`;
       }, 8000);
     }, 2500);
   }
 
   setInterval(() => {
-    const d = window.uxda?.diagnostico?.();
+    const d = window.uxea?.diagnostico?.();
     document.getElementById("diagnostico").textContent = d
       ? JSON.stringify(d, null, 1)
       : "o SDK ainda não arrancou";

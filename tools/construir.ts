@@ -3,8 +3,8 @@
  *
  * Dois formatos, e cada um serve uma forma de integrar:
  *
- *   dist/uxda.js    para o `<script>`: arranca sozinho pelos atributos da etiqueta
- *   dist/uxda.mjs   para quem instala por npm e quer chamar `iniciar()` à mão
+ *   dist/uxea.js    para o `<script>`: arranca sozinho pelos atributos da etiqueta
+ *   dist/uxea.mjs   para quem instala por npm e quer chamar `iniciar()` à mão
  *
  * O orçamento de tamanho é verificado a seguir, no `tools/orcamento.ts`, e o CI
  * falha acima dele. Um SDK de medição que pesa mais do que a aplicação que mede
@@ -28,16 +28,16 @@ const comum: BuildOptions = {
 await build({
   ...comum,
   entryPoints: ["src/cdn.ts"],
-  outfile: "dist/uxda.js",
+  outfile: "dist/uxea.js",
   format: "iife",
-  globalName: "UXDA_BUNDLE",
+  globalName: "UXEA_BUNDLE",
 });
 
 await build({
   ...comum,
   entryPoints: ["src/index.ts"],
-  outfile: "dist/uxda.mjs",
+  outfile: "dist/uxea.mjs",
   format: "esm",
 });
 
-console.log("dist/uxda.js e dist/uxda.mjs construídos");
+console.log("dist/uxea.js e dist/uxea.mjs construídos");

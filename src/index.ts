@@ -1,7 +1,7 @@
 /**
- * O SDK web da plataforma UX Data Analysis.
+ * O SDK web da plataforma UX Event Analytics.
  *
- *   <script src="https://cdn.uxda.io/uxda.js" data-chave="uxda_pro_..."></script>
+ *   <script src="https://cdn.uxea.io/uxea.js" data-chave="uxea_pro_..."></script>
  *
  * É esta linha, e mais nada. Sem declarar ecrãs, sem declarar tarefas, sem
  * declarar elementos: é o princípio de **capturar primeiro, definir depois**, e é
@@ -28,7 +28,7 @@ import { ligarInqueritos, type ResumoDeInqueritos } from "./inquerito/index.ts";
 import { apagarOQueGuardamos, CHAVE_RECUSA, propriedadesDoCliente, textoDoCliente, transporteDe } from "./privacidade.ts";
 import { chao } from "./identity/mask.ts";
 
-export const SERVIDOR_POR_OMISSAO = "https://ingest.uxda.io";
+export const SERVIDOR_POR_OMISSAO = "https://ingest.uxea.io";
 
 /** Marcador para a validação local: o valor a sério é escrito pela ingestão. */
 const SEM_PROJETO = "00000000-0000-0000-0000-000000000000";
@@ -62,7 +62,7 @@ export interface Diagnostico {
   transporte: "cifrado" | "local" | "recusado";
 }
 
-export interface Uxda {
+export interface Uxea {
   /** Marcação manual, para o que a captura automática não alcança (RF-CAP-08). */
   track(nome: string, extras?: Record<string, unknown>): void;
   /** Liga o anónimo ao pseudónimo depois da autenticação (RF-CAP-11). */
@@ -129,7 +129,7 @@ export interface Uxda {
   diagnostico(): Diagnostico;
 }
 
-/** Do prefixo da chave sai o ambiente: `uxda_pro_...` é produção. */
+/** Do prefixo da chave sai o ambiente: `uxea_pro_...` é produção. */
 export function ambienteDaChave(chave: string): string {
   const p = chave.slice(5, 8);
   if (p === "pro") return "producao";
@@ -144,7 +144,7 @@ interface Estado {
   msFio: number;
 }
 
-function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentimento"]): Uxda {
+function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentimento"]): Uxea {
   const amb: Ambiente = { ...ambienteDoBrowser(op.ambiente?.janela ?? (globalThis as any).window), ...(op.ambiente ?? {}) } as Ambiente;
   const janela = amb.janela;
   const documento = amb.documento;
@@ -171,7 +171,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
 
   // A escrita da fila sai do caminho do evento: junta-se em memória e grava-se
   // uma vez por lote de cem milissegundos. O fecho da página força a escrita.
-  const armazem = new Armazem(amb.armazenamento, "uxda.fila",
+  const armazem = new Armazem(amb.armazenamento, "uxea.fila",
     typeof janela?.setTimeout === "function" ? (fn) => janela.setTimeout(fn, 100) : null);
   const trabalhador: Trabalhador | null = criarTrabalhador(janela);
   // O envio sai do fio principal quando o browser deixa (RNF-SDK-03). O
@@ -185,7 +185,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
     armazem,
     { ...amb, enviar },
     `${servidor}/v1/eventos`,
-    () => ({ "X-UXDA-Key": op.chave }),
+    () => ({ "X-UXEA-Key": op.chave }),
     limitesPara(janela?.navigator?.connection),
   );
 
@@ -195,7 +195,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
   const ctx = contextoDe(janela);
 
   const versaoApp = op.versao
-    ?? documento?.querySelector?.('meta[name="uxda:version"]')?.getAttribute?.("content")
+    ?? documento?.querySelector?.('meta[name="uxea:version"]')?.getAttribute?.("content")
     ?? "0.0.0";
 
   const ecraDe = (): string => chaveDeEcra(janela?.location?.pathname ?? "/", janela?.location?.hash ?? "");
@@ -297,7 +297,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
   let ligacaoRede: { desligar(): void } | null = null;
   const desligarCiclo: Array<() => void> = [];
 
-  const arrancar = protegidoAsync("uxda.arrancar", async () => {
+  const arrancar = protegidoAsync("uxea.arrancar", async () => {
     const r = await obterConfig(amb, servidor, op.chave);
     config = r.config;
     origemConfig = r.origem;
@@ -371,8 +371,8 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
   // receber um `false` só por ter chegado antes da resposta do servidor.
   const pronto = arrancar();
 
-  const api: Uxda = {
-    track: protegido("uxda.track", (nome: string, extras: Record<string, unknown> = {}) => {
+  const api: Uxea = {
+    track: protegido("uxea.track", (nome: string, extras: Record<string, unknown> = {}) => {
       // A marcação manual é a exceção, e é para o que o browser não deixa ver.
       // Vai como evento personalizado, com a chave do que o integrador marcou.
       //
@@ -389,7 +389,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
       });
     }, undefined),
 
-    identificar: protegidoAsync("uxda.identificar", async (idPseudonimizado: string) => {
+    identificar: protegidoAsync("uxea.identificar", async (idPseudonimizado: string) => {
       const { id } = await pseudonimizar(idPseudonimizado);
       if (!id) return;
       ident.utilizador = id;
@@ -400,35 +400,35 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
       try {
         await amb.enviar(`${servidor}/v1/identidade/ligar`,
           JSON.stringify({ anonymous_id: ident.anonimo, user_id: id }),
-          { "X-UXDA-Key": op.chave, "Content-Type": "application/json" }, false);
+          { "X-UXEA-Key": op.chave, "Content-Type": "application/json" }, false);
       } catch { /* a ligação repete-se no próximo início de sessão */ }
     }, undefined),
 
-    esquecer: protegido("uxda.esquecer", () => {
+    esquecer: protegido("uxea.esquecer", () => {
       ident.utilizador = null;
       guardarUtilizador(amb.armazenamento, null);
     }, undefined),
 
-    ecra: protegido("uxda.ecra", (nome: string) => {
+    ecra: protegido("uxea.ecra", (nome: string) => {
       ecraForcado = chao(String(nome)).slice(0, 256);
       emitirCru("ecra", { screen_key: ecraForcado });
     }, undefined),
 
-    passo: protegido("uxda.passo", (nome: string) => {
+    passo: protegido("uxea.passo", (nome: string) => {
       ligacao?.passo(chao(String(nome)).slice(0, 64));
     }, undefined),
 
-    terminal: protegido("uxda.terminal", (estado: "sucesso" | "erro" | "abandonado" | "expirado") => {
+    terminal: protegido("uxea.terminal", (estado: "sucesso" | "erro" | "abandonado" | "expirado") => {
       ligacao?.terminal(estado);
     }, undefined),
 
-    mensagem: protegido("uxda.mensagem", (chave: string, tipo: "erro" | "aviso" | "sucesso" | "info", extras?: Record<string, unknown>) => {
+    mensagem: protegido("uxea.mensagem", (chave: string, tipo: "erro" | "aviso" | "sucesso" | "info", extras?: Record<string, unknown>) => {
       // A operação é texto da instituição, e sai mascarada como o resto (18.1).
       const e = extras?.["operacao"] ? { ...extras, operacao: textoDoCliente(extras["operacao"], "operacao", config.propriedadesExpostas) } : extras;
       ligacao?.mensagem(chao(String(chave)).slice(0, 256), tipo, e);
     }, undefined),
 
-    erroTecnico: protegido("uxda.erroTecnico", (chave: string, propriedades?: Record<string, unknown>) => {
+    erroTecnico: protegido("uxea.erroTecnico", (chave: string, propriedades?: Record<string, unknown>) => {
       const props: Record<string, unknown> = { classe_erro: "sistema" };
       const operacao = propriedades?.["operacao"];
       if (operacao) props["operacao"] = textoDoCliente(operacao, "operacao", config.propriedadesExpostas).slice(0, 32);
@@ -437,15 +437,15 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
       ligacao?.mensagemTecnica(chao(String(chave)).slice(0, 256), props);
     }, undefined),
 
-    inquerito: protegidoAsync("uxda.inquerito", async (chave: string): Promise<boolean> => {
+    inquerito: protegidoAsync("uxea.inquerito", async (chave: string): Promise<boolean> => {
       await pronto;
       if (!est.ligado || !amostrado) return false;
       return inqueritos.pedir(String(chave).slice(0, 128));
     }, false),
 
-    descarregar: protegidoAsync("uxda.descarregar", async () => { await fila.descarregar(); }, undefined),
+    descarregar: protegidoAsync("uxea.descarregar", async () => { await fila.descarregar(); }, undefined),
 
-    parar: protegido("uxda.parar", () => {
+    parar: protegido("uxea.parar", () => {
       est.ligado = false;
       inqueritos.desligar();
       ligacao?.desligar();
@@ -454,7 +454,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
       trabalhador?.terminar();
     }, undefined),
 
-    diagnostico: protegido("uxda.diagnostico", (): Diagnostico => ({
+    diagnostico: protegido("uxea.diagnostico", (): Diagnostico => ({
       versao: VERSAO,
       ambiente: ambienteNome,
       amostrado,
@@ -480,7 +480,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
     }),
     // O consentimento decide-se na fachada, por cima desta instância (ver `iniciar`).
     // Aqui só se faz a metade que precisa de chegar à fila: esvaziá-la sem enviar.
-    consentimento: protegido("uxda.consentimento.fila", (dado: boolean) => {
+    consentimento: protegido("uxea.consentimento.fila", (dado: boolean) => {
       if (dado === false) fila.esvaziar();
     }, undefined),
   };
@@ -520,13 +520,13 @@ function recusaGuardada(op: Opcoes): boolean {
  * da cache, nem um identificador, nem um pedido. O sinal decide-o a aplicação, e
  * não há configuração do servidor que o contorne.
  */
-export function iniciar(op: Opcoes): Uxda {
+export function iniciar(op: Opcoes): Uxea {
   const exigido = op.consentimento === "exigido";
   // Um endereço em claro para fora da máquina não arranca nada, com ou sem
   // consentimento (cartão 18.6).
   const emClaro = transporteDe(op.servidor ?? SERVIDOR_POR_OMISSAO) === "recusado";
   let estado: Diagnostico["consentimento"] = recusaGuardada(op) ? "recusado" : exigido ? "pendente" : "implicito";
-  let dentro: Uxda | null = null;
+  let dentro: Uxea | null = null;
   const ler = () => estado;
   const arrancar = () => { if (!dentro && !emClaro) dentro = iniciarCaptura(op, ler); };
   if (estado === "implicito") arrancar();
@@ -549,7 +549,7 @@ export function iniciar(op: Opcoes): Uxda {
     descarregar: async () => { await dentro?.descarregar(); },
     parar: () => dentro?.parar(),
     diagnostico: () => (dentro ? dentro.diagnostico() : diagnosticoInerte(op, estado)),
-    consentimento: protegido("uxda.consentimento", (dado: boolean) => {
+    consentimento: protegido("uxea.consentimento", (dado: boolean) => {
       const loja = lojaCrua();
       if (dado === true) {
         try { loja?.removeItem?.(CHAVE_RECUSA); } catch { /* segue */ }
@@ -572,21 +572,21 @@ export function iniciar(op: Opcoes): Uxda {
  * Arranque automático a partir da etiqueta `<script>`. É o que faz a integração
  * ser uma linha: sem isto, quem cola o script tem ainda de escrever a chamada.
  */
-export function arranqueAutomatico(janela: any = (globalThis as any).window): Uxda | null {
+export function arranqueAutomatico(janela: any = (globalThis as any).window): Uxea | null {
   try {
     const doc = janela?.document;
     const el = doc?.currentScript ?? doc?.querySelector?.("script[data-chave]");
     const chave = el?.getAttribute?.("data-chave");
     if (!chave) return null;
-    const uxda = iniciar({
+    const uxea = iniciar({
       chave,
       servidor: el.getAttribute("data-servidor") ?? undefined,
       versao: el.getAttribute("data-versao") ?? undefined,
       automatico: el.getAttribute("data-automatico") !== "false",
       consentimento: el.getAttribute("data-consentimento") === "exigido" ? "exigido" : "implicito",
     });
-    janela.uxda = uxda;
-    return uxda;
+    janela.uxea = uxea;
+    return uxea;
   } catch {
     return null;
   }

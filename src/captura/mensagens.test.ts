@@ -27,9 +27,9 @@ async function comSdk(html = PAGINA, config: Record<string, unknown> = {}) {
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel: "padrao", captura: [], versao: 1, ...config } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
-  return { br, uxda };
+  return { br, uxea };
 }
 
 /** Põe uma mensagem no ecrã como uma aplicação a põe: cria o nó e acrescenta-o. */
@@ -45,7 +45,7 @@ const mensagens = (br: any) => br.eventos().filter((e: any) => e.event_type === 
 test("5.1 seis mensagens diferentes dão seis chaves distintas, nos quatro tipos", async () => {
   // É a linha `Pronto quando` do cartão, à letra. E nada disto está instrumentado:
   // é o DOM da aplicação tal como ela o escreveria.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   mostrar(br, `
     <div role="alert" class="alert alert-danger">Pagamento recusado pelo banco</div>
     <div role="alert" class="alert alert-danger">Sessao expirada, entre outra vez</div>
@@ -55,7 +55,7 @@ test("5.1 seis mensagens diferentes dão seis chaves distintas, nos quatro tipos
     <div class="snackbar snackbar-info">Guardamos as suas preferencias</div>
   `);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const evs = mensagens(br);
@@ -76,12 +76,12 @@ test("5.1 a chave ganha ao texto, e o mesmo erro em dois idiomas conta como um",
   // É o RF-MSG-02, e é a razão de ele existir: uma aplicação bilingue com captura
   // por texto dá duas entradas no catálogo para o mesmo problema, e a segunda
   // parece metade do tamanho que tem.
-  const { br, uxda } = await comSdk();
-  mostrar(br, `<div role="alert" data-uxda-mensagem="saldo_insuficiente">Saldo insuficiente</div>`);
+  const { br, uxea } = await comSdk();
+  mostrar(br, `<div role="alert" data-uxea-mensagem="saldo_insuficiente">Saldo insuficiente</div>`);
   await br.avancar(2000);
-  mostrar(br, `<div role="alert" data-uxda-mensagem="saldo_insuficiente">Insufficient balance</div>`);
+  mostrar(br, `<div role="alert" data-uxea-mensagem="saldo_insuficiente">Insufficient balance</div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const evs = mensagens(br);
@@ -98,7 +98,7 @@ test("5.1 validação, operação e sistema são três coisas, e saem distinguid
   // RF-MSG-07. A distinção não é taxonómica: um erro de validação é trabalho de
   // quem desenhou o formulário, um de operação é de quem escreveu a regra de
   // negócio, e um de sistema é de quem opera a infraestrutura.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   const campo = br.documento.querySelector("#erro-nif")!;
   campo.removeAttribute("hidden");
   campo.textContent = "NIF invalido";
@@ -106,7 +106,7 @@ test("5.1 validação, operação e sistema são três coisas, e saem distinguid
   await br.avancar(50);
   mostrar(br, `<div role="alert" class="alert-danger">A operacao nao pode ser concluida</div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const evs = mensagens(br);
@@ -122,11 +122,11 @@ test("5.1 validação, operação e sistema são três coisas, e saem distinguid
 });
 
 test("5.1 o passo em que a tentativa ia vai na mensagem", async () => {
-  const { br, uxda } = await comSdk();
-  uxda.passo("confirmacao");
-  mostrar(br, `<div role="alert" data-uxda-mensagem="cartao_recusado">Cartao recusado</div>`);
+  const { br, uxea } = await comSdk();
+  uxea.passo("confirmacao");
+  mostrar(br, `<div role="alert" data-uxea-mensagem="cartao_recusado">Cartao recusado</div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
   assert.equal(mensagens(br)[0].properties.passo, "confirmacao");
 });
@@ -135,10 +135,10 @@ test("5.2 montantes, datas e identificadores saem mascarados do dispositivo", as
   // RF-MSG-04, e o sítio é o que interessa: **no dispositivo**. Mascarar no
   // servidor deixava a promessa verdadeira no desenho e falsa na prática, porque
   // o valor já tinha atravessado a rede.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   mostrar(br, `<div role="alert" class="erro">O saldo de 12.400,50 Kz e insuficiente para o pedido 005123456LA041 de 2027-03-14</div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const ev = mensagens(br)[0];
@@ -177,10 +177,10 @@ test("5.2 nem o nome nem o que a pessoa escreveu saem dentro de uma mensagem", a
   // É o risco crítico do documento: mensagens de erro com dados pessoais
   // interpolados enviadas sem mascaramento. O `mascarar` do elemento não chegava:
   // um nome não tem um único algarismo.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   mostrar(br, `<div role="alert" class="erro">Ola Ana Maria da Silva, o valor "conta-secreta" nao e valido</div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const bruto = JSON.stringify(br.eventos());
@@ -202,14 +202,14 @@ test("5.2 a lista de permissões da instituição levanta a mascaragem, e o chã
   const semLista = await comSdk();
   mostrar(semLista.br, `<div role="alert" class="aviso">${texto}</div>`);
   await semLista.br.avancar(50);
-  await semLista.uxda.descarregar();
+  await semLista.uxea.descarregar();
   await semLista.br.avancar(20000);
   assert.ok(String(mensagens(semLista.br)[0].message_text_masked).includes("{hora}"), "por omissão tem de sair mascarado");
 
   const comLista = await comSdk(PAGINA, { mensagens_expostas: [chave] });
   mostrar(comLista.br, `<div role="alert" class="aviso">${texto}</div>`);
   await comLista.br.avancar(50);
-  await comLista.uxda.descarregar();
+  await comLista.uxea.descarregar();
   await comLista.br.avancar(20000);
   const exposto = String(mensagens(comLista.br)[0].message_text_masked);
   assert.ok(exposto.includes("Multicaixa Express"), `a lista não expôs nada: ${exposto}`);
@@ -221,7 +221,7 @@ test("5.3 os erros técnicos saem distinguidos, e nenhum deles esteve no ecrã",
   // RF-MSG-06. Falhas de rede, tempos esgotados e respostas de erro do servidor
   // não produzem mensagem visível, mas produzem abandono: sem elas, a causa
   // provável do abandono do 12.2 fica cega ao motivo mais frequente de todos.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   const janela: any = br.janela;
 
   janela.fetch = async (url: string) => {
@@ -232,7 +232,7 @@ test("5.3 os erros técnicos saem distinguidos, e nenhum deles esteve no ecrã",
   };
   // O SDK embrulha o `fetch` que estiver posto no momento em que liga, e por isso
   // religa-se a captura de rede sobre este.
-  const uxda2 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea2 = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   await janela.fetch("https://api.exemplo.ao/pagamentos/8412").catch(() => {});
@@ -240,8 +240,8 @@ test("5.3 os erros técnicos saem distinguidos, e nenhum deles esteve no ecrã",
   await janela.fetch("https://api.exemplo.ao/lento").catch(() => {});
   await janela.fetch("https://api.exemplo.ao/saldos/1").catch(() => {});
   await br.avancar(50);
-  await uxda.descarregar();
-  await uxda2.descarregar();
+  await uxea.descarregar();
+  await uxea2.descarregar();
   await br.avancar(20000);
 
   const tecnicos = br.eventos().filter((e: any) => e.event_type === "erro_rede");
@@ -257,9 +257,9 @@ test("5.3 os erros técnicos saem distinguidos, e nenhum deles esteve no ecrã",
 });
 
 test("5.3 a aplicação declara o que apanhou e não mostrou", async () => {
-  const { br, uxda } = await comSdk();
-  uxda.erroTecnico("resposta_ilegivel", { operacao: "extrato", codigo_http: 200 });
-  await uxda.descarregar();
+  const { br, uxea } = await comSdk();
+  uxea.erroTecnico("resposta_ilegivel", { operacao: "extrato", codigo_http: 200 });
+  await uxea.descarregar();
   await br.avancar(20000);
   const ev = mensagens(br)[0];
   assert.equal(ev.message_key, "resposta_ilegivel");
@@ -269,12 +269,12 @@ test("5.3 a aplicação declara o que apanhou e não mostrou", async () => {
 });
 
 test("5.1 a mesma mensagem a piscar não conta vinte vezes", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   for (let i = 0; i < 5; i++) {
-    mostrar(br, `<div role="alert" data-uxda-mensagem="rede_lenta">A ligacao esta lenta</div>`);
+    mostrar(br, `<div role="alert" data-uxea-mensagem="rede_lenta">A ligacao esta lenta</div>`);
     await br.avancar(100);
   }
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
   assert.equal(mensagens(br).length, 1, "cinco apresentações em meio segundo contaram mais do que uma");
 });
@@ -282,19 +282,19 @@ test("5.1 a mesma mensagem a piscar não conta vinte vezes", async () => {
 test("5.1 um invólucro vazio não é uma mensagem", async () => {
   // Uma aplicação tem dezenas de `div` de alerta escondidos à espera de serem
   // preenchidos. Contá-los dava um catálogo com entradas que ninguém viu.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   mostrar(br, `<div role="alert" class="alert" id="vazio"></div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
   assert.equal(mensagens(br).length, 0);
 });
 
 test("5.1 uma mensagem nunca lê o campo que está dentro dela", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   mostrar(br, `<div role="alert" class="erro">Confirme o valor <input id="eco" value="ana.silva@exemplo.ao"><textarea>senha-super-secreta</textarea></div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
   const bruto = JSON.stringify(br.eventos());
   assert.ok(!bruto.includes("senha-super-secreta"), "o conteúdo de um textarea saiu dentro da mensagem");
@@ -308,10 +308,10 @@ test("5.1 o contentor dos avisos não é uma mensagem: só o que está lá dentr
   // avisos chama-se `avisos`, tem `aria-live`, e o texto dele é a soma dos
   // filhos. Contava duas vezes, uma pelo filho e outra pelo pai, e a segunda com
   // a classificação do invólucro. A mensagem é sempre a mais funda.
-  const { br, uxda } = await comSdk(`<div id="avisos" aria-live="polite" class="mensagens"></div>`);
+  const { br, uxea } = await comSdk(`<div id="avisos" aria-live="polite" class="mensagens"></div>`);
   mostrar(br, `<div role="alert" class="alert-danger">Pagamento recusado pelo banco</div>`);
   await br.avancar(50);
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const evs = mensagens(br);

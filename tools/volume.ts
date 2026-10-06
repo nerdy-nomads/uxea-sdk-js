@@ -34,7 +34,7 @@ async function tarefa(nivel: Nivel) {
   br.responder((p: any) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, captura: [], versao: 1 } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_volume", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_volume", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(20);
 
   // Chega ao ecrã e olha para ele.
@@ -69,9 +69,9 @@ async function tarefa(nivel: Nivel) {
   disparar(br.documento, "#f", "submit");
   br.janela.history.pushState({}, "", "/pagamento/confirmar");
   await br.avancar(50);
-  uxda.terminal("sucesso");
+  uxea.terminal("sucesso");
 
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const evs = br.eventos();

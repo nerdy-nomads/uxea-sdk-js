@@ -62,11 +62,11 @@ const MAX_TEXTO = 240;
 
 /** Os atributos por onde uma aplicação declara a chave da mensagem, por ordem. */
 const ATRIBUTOS_DE_CHAVE = [
-  "data-uxda-mensagem", "data-mensagem", "data-message-key", "data-message-id",
+  "data-uxea-mensagem", "data-mensagem", "data-message-key", "data-message-id",
   "data-msg", "data-i18n", "data-l10n-id", "data-error-code",
 ];
 
-const ATRIBUTOS_DE_TIPO = ["data-uxda-tipo", "data-message-kind", "data-severity", "data-tipo"];
+const ATRIBUTOS_DE_TIPO = ["data-uxea-tipo", "data-message-kind", "data-severity", "data-tipo"];
 
 /**
  * Pelas classes, que é como noventa por cento das aplicações escreve isto. A
@@ -160,7 +160,7 @@ export function campoAssociado(documento: any, el: any): any {
       );
       if (dono) return dono;
     }
-    const nome = atributo(el, "data-uxda-campo") || atributo(el, "data-campo") || atributo(el, "for");
+    const nome = atributo(el, "data-uxea-campo") || atributo(el, "data-campo") || atributo(el, "for");
     if (nome && documento?.querySelector) {
       const porNome = documento.querySelector(`#${CSS_ESCAPE(nome)}, [name="${nome}"]`);
       if (porNome) return porNome;
@@ -311,7 +311,7 @@ export function ligarMensagens(janela: any, documento: any, ctx: ContextoDeMensa
 
     const tipo = tipoDe(el);
     const campo = campoAssociado(documento, el);
-    const declarada = atributo(el, "data-uxda-classe").toLowerCase();
+    const declarada = atributo(el, "data-uxea-classe").toLowerCase();
     const classe: ClasseDeErro | undefined = tipo !== "erro"
       ? undefined
       : declarada === "sistema" || declarada === "validacao" || declarada === "operacao"
@@ -357,7 +357,7 @@ export function ligarMensagens(janela: any, documento: any, ctx: ContextoDeMensa
         // Uma aplicação que já tem o `div` no ecrã e só lhe muda a classe para o
         // mostrar não acrescenta nó nenhum: sem os atributos, metade das
         // mensagens do mundo real não era vista.
-        attributeFilter: ["class", "role", "aria-live", "hidden", "data-uxda-mensagem", "data-mensagem"],
+        attributeFilter: ["class", "role", "aria-live", "hidden", "data-uxea-mensagem", "data-mensagem"],
       });
       desligadores.push(() => observador.disconnect());
     } catch { /* sem observador, fica a API pública e a rede */ }
@@ -367,7 +367,7 @@ export function ligarMensagens(janela: any, documento: any, ctx: ContextoDeMensa
   // servidor com o erro já lá dentro nunca dispara mutação nenhuma.
   try {
     const iniciais = documento?.body?.querySelectorAll?.(
-      '[role="alert"], [role="status"], [aria-live], output, [data-uxda-mensagem], [data-mensagem]',
+      '[role="alert"], [role="status"], [aria-live], output, [data-uxea-mensagem], [data-mensagem]',
     );
     for (const el of Array.from(iniciais ?? []) as any[]) analisar(el);
   } catch { /* nada */ }

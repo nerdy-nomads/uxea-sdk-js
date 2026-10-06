@@ -33,7 +33,7 @@ export class Armazem {
   // fila, guardar o quinhentos e um custava quinhentas vezes mais do que o
   // primeiro, e o orçamento do fio principal ia atrás. Quem o passa é o SDK, com
   // o temporizador do browser; quem não o passa (os ensaios) escreve na hora.
-  constructor(loja: Armazenamento | null, chave = "uxda.fila", agendar: ((fn: () => void) => void) | null = null) {
+  constructor(loja: Armazenamento | null, chave = "uxea.fila", agendar: ((fn: () => void) => void) | null = null) {
     this.loja = loja;
     this.chave = chave;
     this.agendar = agendar;

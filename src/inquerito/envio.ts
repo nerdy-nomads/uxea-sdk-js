@@ -87,7 +87,7 @@ export async function pedirElegibilidade(
 ): Promise<Elegibilidade | null> {
   try {
     const r = await enviar(`${servidor}/v1/respostas/elegibilidade`, JSON.stringify(corpo),
-      { "X-UXDA-Key": chave, "Content-Type": "application/json" }, false, "POST");
+      { "X-UXEA-Key": chave, "Content-Type": "application/json" }, false, "POST");
     if (!r || r.estado < 200 || r.estado >= 300 || !r.corpo) return null;
     const v = JSON.parse(r.corpo);
     const dados = v?.dados;
@@ -173,7 +173,7 @@ export async function entregarResposta(
     try {
       const corpo = JSON.stringify(corpoDaResposta(d, r, respostaId, agora()));
       resposta = await enviar(`${servidor}/v1/respostas`, corpo,
-        { "X-UXDA-Key": chave, "Content-Type": "application/json" }, false, "POST");
+        { "X-UXEA-Key": chave, "Content-Type": "application/json" }, false, "POST");
     } catch {
       resposta = null;
     }

@@ -39,9 +39,9 @@ const AVARIAS: Array<{ nome: string; partir: (br: any) => void }> = [
   {
     nome: "o armazenamento devolve lixo",
     partir: (br) => {
-      br.loja.setItem("uxda.fila", "isto não é json");
-      br.loja.setItem("uxda.config", "{{{");
-      br.loja.setItem("uxda.sessao", "[]");
+      br.loja.setItem("uxea.fila", "isto não é json");
+      br.loja.setItem("uxea.config", "{{{");
+      br.loja.setItem("uxea.sessao", "[]");
     },
   },
   {
@@ -98,22 +98,22 @@ for (const avaria of AVARIAS) {
     // Tudo o que se segue é a aplicação anfitriã a viver a vida dela.
     let anfitriaViva = true;
     try {
-      const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+      const uxea = iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
       await br.avancar(10);
       disparar(br.documento, "#b", "click");
       disparar(br.documento, "#i", "focusin");
       disparar(br.documento, "#i", "keydown", { key: "a" });
       disparar(br.documento, "#i", "focusout");
       disparar(br.documento, "#f", "submit");
-      uxda.track("passo", { segmento: "ensaio" });
-      uxda.ecra("/outro");
-      await uxda.identificar("cliente-1");
-      await uxda.descarregar();
+      uxea.track("passo", { segmento: "ensaio" });
+      uxea.ecra("/outro");
+      await uxea.identificar("cliente-1");
+      await uxea.descarregar();
       await br.avancar(120000);
       // O diagnóstico responde mesmo com o SDK meio partido: é por ele que se
       // descobre o que se passou, e ele próprio não pode ser um sítio que falha.
-      assert.equal(typeof uxda.diagnostico().versao, "string");
-      uxda.parar();
+      assert.equal(typeof uxea.diagnostico().versao, "string");
+      uxea.parar();
     } catch (e) {
       anfitriaViva = false;
       assert.fail(`o SDK deixou escapar um erro para a anfitriã: ${e}`);
@@ -126,7 +126,7 @@ test("2.7 o `fetch` da anfitriã continua a devolver o que devolvia", async () =
   const br = criarBrowser(`<p>x</p>`);
   const respostaOriginal = { status: 200, texto: "conteúdo do cliente" };
   br.janela.fetch = async () => respostaOriginal;
-  iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const r = await br.janela.fetch("/api/pedidos");
   assert.equal(r, respostaOriginal, "o SDK trocou a resposta da aplicação");
@@ -136,28 +136,28 @@ test("2.7 um erro do `fetch` da anfitriã chega à anfitriã tal e qual", async 
   const br = criarBrowser(`<p>x</p>`);
   const erroOriginal = new Error("500 do backend do cliente");
   br.janela.fetch = async () => { throw erroOriginal; };
-  iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   await assert.rejects(() => br.janela.fetch("/api/x"), (e: unknown) => e === erroOriginal);
 });
 
 test("2.7 argumentos absurdos na API pública não passam disso", async () => {
   const br = criarBrowser(`<p>x</p>`);
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const circular: any = {}; circular.eu = circular;
-  uxda.track(circular);
-  uxda.track(null as any, circular);
-  uxda.ecra(undefined as any);
-  uxda.passo(circular);
-  uxda.terminal("inventado" as any);
-  uxda.mensagem(circular, null as any, circular);
-  uxda.mensagem("", "erro");
-  uxda.erroTecnico(null as any, circular);
-  await uxda.identificar(12345 as any);
-  await uxda.descarregar();
+  uxea.track(circular);
+  uxea.track(null as any, circular);
+  uxea.ecra(undefined as any);
+  uxea.passo(circular);
+  uxea.terminal("inventado" as any);
+  uxea.mensagem(circular, null as any, circular);
+  uxea.mensagem("", "erro");
+  uxea.erroTecnico(null as any, circular);
+  await uxea.identificar(12345 as any);
+  await uxea.descarregar();
   await br.avancar(60000);
-  assert.equal(typeof uxda.diagnostico().eventosEmitidos, "number");
+  assert.equal(typeof uxea.diagnostico().eventosEmitidos, "number");
 });
 
 test("2.7 o registo interno guarda o que aconteceu, e não cresce sem limite", async () => {
@@ -165,12 +165,12 @@ test("2.7 o registo interno guarda o que aconteceu, e não cresce sem limite", a
   const br = criarBrowser(`<button id="b">ok</button>`);
   const el = br.documento.querySelector("#b");
   Object.defineProperty(el, "tagName", { get() { throw new Error("partido"); } });
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   for (let i = 0; i < 200; i++) disparar(br.documento, "#b", "click");
   await br.avancar(60000);
   const n = errosInternos().length;
   assert.ok(n > 0, "não registou nada, e alguma coisa partiu");
   assert.ok(n <= 50, `o registo interno cresceu até ${n}`);
-  assert.equal(typeof uxda.diagnostico().errosInternos, "number");
+  assert.equal(typeof uxea.diagnostico().errosInternos, "number");
 });

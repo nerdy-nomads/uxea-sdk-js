@@ -63,10 +63,10 @@ test("18.2 em volume: mil pessoas com dados diferentes em todos os caminhos, e n
   const NOMES = ["Ana", "Bruno", "Carla", "Domingos", "Esperança", "Fernando", "Graça", "Helder", "Isabel", "Joaquim"];
   const APELIDOS = ["Silva", "Santos", "Ferreira", "Costa", "Neto", "Miranda", "Cardoso", "Tavares"];
   let pedidos = 0, eventos = 0, verificados = 0;
-  const N = Number(process.env.UXDA_FUGA_N ?? 1000);
+  const N = Number(process.env.UXEA_FUGA_N ?? 1000);
   const br = criarBrowser(PAGINA, { caminho: "/inicio" });
   br.janela.fetch = async () => ({ status: 500, ok: false }); // rápido: a espera não é o que aqui se mede
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const segredosDaCorrida: string[] = [];
   for (let i = 0; i < N; i++) {
@@ -79,13 +79,13 @@ test("18.2 em volume: mil pessoas com dados diferentes em todos os caminhos, e n
     disparar(br.documento, "#nome", "focusin");
     disparar(br.documento, "#nome", "input", { inputType: "insertText", data: nome });
     disparar(br.documento, "#nome", "focusout");
-    uxda.track(`evento_${nif}`, { segmento: nome, campanha: correio });
-    uxda.ecra(`/clientes/${correio}`);
-    uxda.mensagem(`erro_${cartao}`, "erro", { operacao: nome });
+    uxea.track(`evento_${nif}`, { segmento: nome, campanha: correio });
+    uxea.ecra(`/clientes/${correio}`);
+    uxea.mensagem(`erro_${cartao}`, "erro", { operacao: nome });
     await br.janela.fetch(`https://api.exemplo.ao/contas/${nif}/cartoes/${cartao}?email=${correio}`);
-    if (i % 100 === 99) { await uxda.descarregar(); await br.avancar(20000); }
+    if (i % 100 === 99) { await uxea.descarregar(); await br.avancar(20000); }
   }
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(30000);
   const bruto = JSON.stringify(br.pedidos);
   pedidos = br.pedidos.length;

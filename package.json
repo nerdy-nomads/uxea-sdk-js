@@ -1,8 +1,8 @@
 {
-  "name": "@uxda/sdk-js",
+  "name": "@uxea/sdk-js",
   "version": "0.0.0",
   "private": true,
-  "description": "SDK web da plataforma UX Data Analysis. Sem dependências de execução.",
+  "description": "SDK web da plataforma UX Event Analytics. Sem dependências de execução.",
   "type": "module",
   "license": "UNLICENSED",
   "scripts": {
@@ -21,8 +21,8 @@
     "linkedom": "^0.18.5",
     "typescript": "^5.7.2"
   },
-  "main": "dist/uxda.mjs",
-  "module": "dist/uxda.mjs",
+  "main": "dist/uxea.mjs",
+  "module": "dist/uxea.mjs",
   "types": "dist/index.d.ts",
   "files": [
     "dist",

@@ -34,7 +34,7 @@ node --experimental-strip-types tools/inventario/ensaio.ts
 # A canalização inteira, contra um projeto próprio (nunca o do semeador: os
 # eventos deste ensaio entopem o catálogo de quem está a trabalhar no painel).
 CHAVE=$( cd ../../backend/ingest && go run ./tools/semear -so-chave \
-  -projeto 33333333-3333-3333-3333-333333333333 | grep -o 'uxda_des_[a-f0-9]*' )
+  -projeto 33333333-3333-3333-3333-333333333333 | grep -o 'uxea_des_[a-f0-9]*' )
 node --experimental-strip-types tools/inventario/ensaio.ts "$CHAVE"
 ```
 

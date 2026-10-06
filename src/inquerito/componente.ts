@@ -37,7 +37,7 @@ import type { RegraDeInquerito, TemaDeInquerito } from "../core/tipos.ts";
 import type { Entrega, Respondido } from "./envio.ts";
 
 /** O nome do hospedeiro. Um elemento próprio, para nenhum `div { }` da página lhe tocar. */
-export const ETIQUETA = "uxda-inquerito";
+export const ETIQUETA = "uxea-inquerito";
 
 /** Quanto tempo o agradecimento fica à vista antes de o cartão se fechar sozinho. */
 export const AGRADECIMENTO_MS = 2500;
@@ -115,28 +115,28 @@ export const TEXTOS: Record<"pt" | "en", Textos> = {
  */
 export const FOLHA = `
 :host{all:initial}
-.cartao{position:fixed;right:16px;bottom:16px;z-index:2147483000;box-sizing:border-box;width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow:auto;padding:16px;background:var(--uxda-fundo);color:var(--uxda-texto);font:15px/1.45 var(--uxda-fonte);border-radius:var(--uxda-cantos);box-shadow:0 10px 30px rgba(0,0,0,.18),0 0 0 1px rgba(127,127,127,.25);text-align:left}
+.cartao{position:fixed;right:16px;bottom:16px;z-index:2147483000;box-sizing:border-box;width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow:auto;padding:16px;background:var(--uxea-fundo);color:var(--uxea-texto);font:15px/1.45 var(--uxea-fonte);border-radius:var(--uxea-cantos);box-shadow:0 10px 30px rgba(0,0,0,.18),0 0 0 1px rgba(127,127,127,.25);text-align:left}
 .cartao *{box-sizing:border-box;font:inherit;color:inherit}
 .topo{display:flex;align-items:flex-start;gap:8px}
 .pergunta{flex:1;margin:0;font-size:16px;font-weight:600}
-.fechar{flex:none;width:32px;height:32px;margin:-6px -6px 0 0;padding:0;border:0;border-radius:var(--uxda-cantos);background:transparent;font-size:20px;line-height:1;cursor:pointer}
+.fechar{flex:none;width:32px;height:32px;margin:-6px -6px 0 0;padding:0;border:0;border-radius:var(--uxea-cantos);background:transparent;font-size:20px;line-height:1;cursor:pointer}
 .escala,.opcoes{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px;padding:0;border:0}
 .opcoes{flex-direction:column}
 .ponto,.opcao{position:relative;cursor:pointer}
 .ponto{flex:1 0 auto}
 .ponto input,.opcao input{position:absolute;width:1px;height:1px;margin:0;opacity:0}
-.ponto span{display:flex;align-items:center;justify-content:center;min-width:26px;height:36px;padding:0 4px;border:1px solid rgba(127,127,127,.45);border-radius:calc(var(--uxda-cantos) / 2)}
-.opcao span{display:flex;align-items:center;min-height:36px;padding:6px 10px;border:1px solid rgba(127,127,127,.45);border-radius:calc(var(--uxda-cantos) / 2)}
-input:checked+span{background:var(--uxda-primaria);border-color:var(--uxda-primaria);color:var(--uxda-fundo)}
-input:focus-visible+span,button:focus-visible,textarea:focus-visible{outline:2px solid var(--uxda-primaria);outline-offset:2px}
+.ponto span{display:flex;align-items:center;justify-content:center;min-width:26px;height:36px;padding:0 4px;border:1px solid rgba(127,127,127,.45);border-radius:calc(var(--uxea-cantos) / 2)}
+.opcao span{display:flex;align-items:center;min-height:36px;padding:6px 10px;border:1px solid rgba(127,127,127,.45);border-radius:calc(var(--uxea-cantos) / 2)}
+input:checked+span{background:var(--uxea-primaria);border-color:var(--uxea-primaria);color:var(--uxea-fundo)}
+input:focus-visible+span,button:focus-visible,textarea:focus-visible{outline:2px solid var(--uxea-primaria);outline-offset:2px}
 .extremos{display:flex;justify-content:space-between;gap:8px;font-size:12px;opacity:.75}
 .rotulo{display:block;margin:12px 0 4px;font-size:13px;font-weight:600}
-textarea{display:block;width:100%;min-height:64px;padding:8px;border:1px solid rgba(127,127,127,.45);border-radius:calc(var(--uxda-cantos) / 2);background:transparent;resize:vertical}
+textarea{display:block;width:100%;min-height:64px;padding:8px;border:1px solid rgba(127,127,127,.45);border-radius:calc(var(--uxea-cantos) / 2);background:transparent;resize:vertical}
 .privacidade{margin:4px 0 0;font-size:12px;opacity:.75}
 .aviso{margin:8px 0 0;font-size:13px}
 .aviso:empty{display:none}
 .acoes{display:flex;justify-content:flex-end;margin-top:12px}
-.enviar{min-height:36px;padding:0 16px;border:0;border-radius:calc(var(--uxda-cantos) / 2);background:var(--uxda-primaria);color:var(--uxda-fundo);font-weight:600;cursor:pointer}
+.enviar{min-height:36px;padding:0 16px;border:0;border-radius:calc(var(--uxea-cantos) / 2);background:var(--uxea-primaria);color:var(--uxea-fundo);font-weight:600;cursor:pointer}
 .enviar[aria-disabled="true"]{opacity:.6;cursor:progress}
 .fim{margin:0;font-weight:600}
 .invisivel{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -216,14 +216,14 @@ export function desenharInquerito(op: OpcoesDoComponente): Componente {
   aplicarFolha(raiz, doc, janela);
 
   const cartao = criar(doc, "section", {
-    class: "cartao", role: "dialog", "aria-modal": "false", "aria-labelledby": "uxda-pergunta", lang: idioma,
+    class: "cartao", role: "dialog", "aria-modal": "false", "aria-labelledby": "uxea-pergunta", lang: idioma,
   });
   const propriedades: Array<[string, string]> = [
-    ["--uxda-primaria", tema.corPrimaria],
-    ["--uxda-fundo", tema.corFundo],
-    ["--uxda-texto", tema.corTexto],
-    ["--uxda-fonte", tema.fonte],
-    ["--uxda-cantos", `${tema.cantosPx}px`],
+    ["--uxea-primaria", tema.corPrimaria],
+    ["--uxea-fundo", tema.corFundo],
+    ["--uxea-texto", tema.corTexto],
+    ["--uxea-fonte", tema.fonte],
+    ["--uxea-cantos", `${tema.cantosPx}px`],
   ];
   for (const [nome, valor] of propriedades) cartao.style.setProperty(nome, valor);
 
@@ -255,7 +255,7 @@ export function desenharInquerito(op: OpcoesDoComponente): Componente {
   /* ------------------------------------------------------------- o topo */
 
   const topo = criar(doc, "div", { class: "topo" });
-  topo.appendChild(criar(doc, "h2", { id: "uxda-pergunta", class: "pergunta" }, regra.pergunta[idioma]));
+  topo.appendChild(criar(doc, "h2", { id: "uxea-pergunta", class: "pergunta" }, regra.pergunta[idioma]));
   const botaoFechar = criar(doc, "button", { type: "button", class: "fechar", "aria-label": t.fechar, title: t.fechar }, "×");
   ouvir(botaoFechar, "click", () => fechar("fechado"));
   topo.appendChild(botaoFechar);
@@ -274,10 +274,10 @@ export function desenharInquerito(op: OpcoesDoComponente): Componente {
   if (escala) {
     const [min, max] = ESCALAS[escala];
     const [baixo, alto] = t.extremos[escala];
-    const grupo = criar(doc, "div", { class: "escala", role: "radiogroup", "aria-labelledby": "uxda-pergunta" });
+    const grupo = criar(doc, "div", { class: "escala", role: "radiogroup", "aria-labelledby": "uxea-pergunta" });
     for (let n = min; n <= max; n++) {
       const rotulo = criar(doc, "label", { class: "ponto" });
-      const entrada = criar(doc, "input", { type: "radio", name: "uxda-nota", value: String(n) });
+      const entrada = criar(doc, "input", { type: "radio", name: "uxea-nota", value: String(n) });
       // Os extremos dizem o que o número quer dizer, e o nome acessível leva-o: um
       // leitor de ecrã que só dissesse "1" não dizia se 1 é bom ou mau.
       if (n === min) entrada.setAttribute("aria-label", `${n} (${baixo.toLowerCase()})`);
@@ -294,12 +294,12 @@ export function desenharInquerito(op: OpcoesDoComponente): Componente {
     corpo.appendChild(extremos);
   } else if (regra.formato === "escolha") {
     const grupo = criar(doc, "div", {
-      class: "opcoes", role: regra.multipla ? "group" : "radiogroup", "aria-labelledby": "uxda-pergunta",
+      class: "opcoes", role: regra.multipla ? "group" : "radiogroup", "aria-labelledby": "uxea-pergunta",
     });
     for (const opcao of regra.opcoes) {
       const rotulo = criar(doc, "label", { class: "opcao" });
       const entrada = criar(doc, "input", {
-        type: regra.multipla ? "checkbox" : "radio", name: "uxda-escolha", value: opcao.chave,
+        type: regra.multipla ? "checkbox" : "radio", name: "uxea-escolha", value: opcao.chave,
       });
       ouvir(entrada, "change", () => {
         if (!regra.multipla) escolhas.clear();
@@ -319,15 +319,15 @@ export function desenharInquerito(op: OpcoesDoComponente): Componente {
   let caixa: any = null;
   if (regra.formato === "livre" || regra.comentario) {
     const livre = regra.formato === "livre";
-    corpo.appendChild(criar(doc, "label", { class: "rotulo", for: "uxda-comentario" }, livre ? t.livre : t.comentario));
+    corpo.appendChild(criar(doc, "label", { class: "rotulo", for: "uxea-comentario" }, livre ? t.livre : t.comentario));
     caixa = criar(doc, "textarea", {
-      id: "uxda-comentario", rows: "3", maxlength: "500", autocomplete: "off",
-      "aria-describedby": "uxda-privacidade", ...(livre ? { required: "", "aria-required": "true" } : {}),
+      id: "uxea-comentario", rows: "3", maxlength: "500", autocomplete: "off",
+      "aria-describedby": "uxea-privacidade", ...(livre ? { required: "", "aria-required": "true" } : {}),
     });
     corpo.appendChild(caixa);
     // Dito a quem escreve, e não só feito: o que sai é mascarado, e uma pessoa que
     // escreve o número de uma encomenda merece saber que ele não vai chegar.
-    corpo.appendChild(criar(doc, "p", { id: "uxda-privacidade", class: "privacidade" }, t.privacidade));
+    corpo.appendChild(criar(doc, "p", { id: "uxea-privacidade", class: "privacidade" }, t.privacidade));
   }
 
   corpo.appendChild(aviso);

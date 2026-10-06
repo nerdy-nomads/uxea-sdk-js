@@ -14,10 +14,10 @@
 import type { Armazenamento } from "../core/tipos.ts";
 import { uuid } from "../core/uuid.ts";
 
-const K_ANON = "uxda.anon";
-const K_DISP = "uxda.dispositivo";
-const K_SESSAO = "uxda.sessao";
-const K_UTIL = "uxda.utilizador";
+const K_ANON = "uxea.anon";
+const K_DISP = "uxea.dispositivo";
+const K_SESSAO = "uxea.sessao";
+const K_UTIL = "uxea.utilizador";
 
 /** Uma sessão técnica morre ao fim de 30 minutos sem nada acontecer. */
 export const INATIVIDADE_MS = 30 * 60 * 1000;

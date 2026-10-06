@@ -73,7 +73,7 @@ export function propriedadesDoCliente(bruto: unknown, expostas: ReadonlyArray<st
 /* ------------------------------------------------- o consentimento (18.1) */
 
 /** Onde fica a recusa, e só a recusa: guardar que alguém disse não é estritamente necessário. */
-export const CHAVE_RECUSA = "uxda.consentimento";
+export const CHAVE_RECUSA = "uxea.consentimento";
 
 /**
  * Apaga tudo o que o SDK guardou no dispositivo, menos a recusa. É o que acontece
@@ -81,7 +81,7 @@ export const CHAVE_RECUSA = "uxda.consentimento";
  * cache da configuração e a fadiga dos inquéritos.
  */
 /** As chaves que o SDK escreve, para os armazenamentos que não se deixam percorrer. */
-const CONHECIDAS = ["uxda.anon", "uxda.dispositivo", "uxda.sessao", "uxda.utilizador", "uxda.fila", "uxda.config", "uxda.inqueritos"];
+const CONHECIDAS = ["uxea.anon", "uxea.dispositivo", "uxea.sessao", "uxea.utilizador", "uxea.fila", "uxea.config", "uxea.inqueritos"];
 
 export function apagarOQueGuardamos(loja: { length?: number; key?(i: number): string | null; getItem(k: string): string | null; removeItem(k: string): void } | null): number {
   if (!loja) return 0;
@@ -90,7 +90,7 @@ export function apagarOQueGuardamos(loja: { length?: number; key?(i: number): st
     const n = typeof loja.length === "number" ? loja.length : 0;
     for (let i = 0; i < n; i++) {
       const k = loja.key?.(i);
-      if (k && k.startsWith("uxda") && k !== CHAVE_RECUSA && !chaves.includes(k)) chaves.push(k);
+      if (k && k.startsWith("uxea") && k !== CHAVE_RECUSA && !chaves.includes(k)) chaves.push(k);
     }
   } catch { /* um armazenamento que não se deixa percorrer: nada a apagar por esta via */ }
   for (const k of chaves) {

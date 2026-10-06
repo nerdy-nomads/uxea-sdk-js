@@ -8,5 +8,5 @@
 import { arranqueAutomatico, iniciar, VERSAO } from "./index.ts";
 
 const alvo = globalThis as any;
-alvo.UXDA = { iniciar, versao: VERSAO };
+alvo.UXEA = { iniciar, versao: VERSAO };
 arranqueAutomatico();

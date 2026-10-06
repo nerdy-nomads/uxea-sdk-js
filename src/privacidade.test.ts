@@ -41,12 +41,12 @@ function comConfig(br: ReturnType<typeof criarBrowser>, config: Record<string, u
 test("18.1 um campo novo, que ninguém declarou, nasce mascarado: mede-se o comportamento e nada do que se escreveu", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/pagamento" });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   escrever(br, "#nif_novo", NIF);
   escrever(br, "#nome", NOME);
   disparar(br.documento, "#f", "submit");
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const saiu = JSON.stringify(br.pedidos);
@@ -62,12 +62,12 @@ test("18.1 um campo novo, que ninguém declarou, nasce mascarado: mede-se o comp
 test("18.1 uma propriedade que o esquema não conhece não sai, e um valor de texto sai mascarado", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/pagamento" });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   // Um programador da instituição, daqui a um ano, a depurar.
-  uxda.track("comprovativo", { nota_interna: NOME, segmento: "Cliente José Manuel Ferreira", valor_monetario: 12400 });
-  uxda.erroTecnico("resposta_ilegivel", { operacao: `pagamento de ${CORREIO}` });
-  await uxda.descarregar();
+  uxea.track("comprovativo", { nota_interna: NOME, segmento: "Cliente José Manuel Ferreira", valor_monetario: 12400 });
+  uxea.erroTecnico("resposta_ilegivel", { operacao: `pagamento de ${CORREIO}` });
+  await uxea.descarregar();
   await br.avancar(20000);
 
   const saiu = JSON.stringify(br.pedidos);
@@ -77,18 +77,18 @@ test("18.1 uma propriedade que o esquema não conhece não sai, e um valor de te
   assert.equal(ev.properties.valor_monetario, 12400);
   assert.equal(ev.properties.nota_interna, undefined);
   assert.match(ev.properties.segmento, /\{nome\}/);
-  assert.deepEqual(uxda.diagnostico().propriedadesDescartadas, ["nota_interna"]);
+  assert.deepEqual(uxea.diagnostico().propriedadesDescartadas, ["nota_interna"]);
 });
 
 test("18.1 só a lista de permissões da instituição levanta a máscara, e nunca o chão", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/pagamento" });
   comConfig(br, { exposicao: { propriedades: ["segmento"], mensagens: [] } });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
-  uxda.track("um", { segmento: "Empresas Grandes" });
-  uxda.track("dois", { segmento: "conta 500123456" });
-  uxda.track("tres", { canal: "Balcão Central" });
-  await uxda.descarregar();
+  uxea.track("um", { segmento: "Empresas Grandes" });
+  uxea.track("dois", { segmento: "conta 500123456" });
+  uxea.track("tres", { canal: "Balcão Central" });
+  await uxea.descarregar();
   await br.avancar(20000);
   const por = (k: string) => br.eventos().find((e) => e.message_key === k)?.properties ?? {};
   assert.equal(por("um").segmento, "Empresas Grandes", "exposta pela instituição, sai como está");
@@ -102,47 +102,47 @@ test("18.1 com o consentimento exigido e por dar, o SDK não toca no dispositivo
   const espia = { ...loja, setItem: (k: string, v: string) => { escritas.push(k); loja.setItem(k, v); } };
   const br = criarBrowser(PAGINA, { caminho: "/pagamento", loja: espia as any });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", consentimento: "exigido", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", consentimento: "exigido", ambiente: br.ambiente() });
   await br.avancar(10);
   escrever(br, "#nome", NOME);
   disparar(br.documento, "#pagar", "click");
-  uxda.track("antes", { segmento: "x" });
-  await uxda.descarregar();
+  uxea.track("antes", { segmento: "x" });
+  await uxea.descarregar();
   await br.avancar(30000);
   assert.equal(br.pedidos.length, 0, "houve pedidos sem consentimento");
   assert.deepEqual(escritas, [], "escreveu no dispositivo sem consentimento");
-  assert.equal(uxda.diagnostico().consentimento, "pendente");
-  assert.equal(uxda.diagnostico().eventosEmitidos, 0);
+  assert.equal(uxea.diagnostico().consentimento, "pendente");
+  assert.equal(uxea.diagnostico().eventosEmitidos, 0);
 
   // Dado: arranca, e só o que acontece daqui para a frente conta.
-  uxda.consentimento(true);
+  uxea.consentimento(true);
   await br.avancar(10);
   disparar(br.documento, "#pagar", "click");
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(20000);
   assert.ok(br.eventos().length > 0, "depois do consentimento devia medir");
   assert.ok(!br.eventos().some((e) => e.message_key === "antes"), "um evento de antes do consentimento saiu");
-  assert.equal(uxda.diagnostico().consentimento, "dado");
+  assert.equal(uxea.diagnostico().consentimento, "dado");
 
   // Retirado: para já, apaga a fila e os identificadores, e guarda só a recusa.
   const antes = br.pedidos.length;
   disparar(br.documento, "#pagar", "click"); // fica na fila, por enviar
-  uxda.consentimento(false);
+  uxea.consentimento(false);
   disparar(br.documento, "#pagar", "click");
-  uxda.track("depois", {});
-  await uxda.descarregar();
+  uxea.track("depois", {});
+  await uxea.descarregar();
   await br.avancar(60000);
   assert.equal(br.pedidos.length, antes, "saiu alguma coisa depois da recusa");
-  for (const k of ["uxda.anon", "uxda.dispositivo", "uxda.sessao", "uxda.fila", "uxda.config"]) {
+  for (const k of ["uxea.anon", "uxea.dispositivo", "uxea.sessao", "uxea.fila", "uxea.config"]) {
     assert.equal(loja.getItem(k), null, `ficou no dispositivo depois da recusa: ${k}`);
   }
-  assert.equal(loja.getItem("uxda.consentimento"), "recusado");
-  assert.equal(uxda.diagnostico().consentimento, "recusado");
+  assert.equal(loja.getItem("uxea.consentimento"), "recusado");
+  assert.equal(uxea.diagnostico().consentimento, "recusado");
 
   // E a página seguinte, mesmo sem exigir, não começa a medir antes de a aplicação voltar a dizer.
   const br2 = criarBrowser(PAGINA, { caminho: "/pagamento", loja });
   comConfig(br2, {});
-  const outra = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br2.ambiente() });
+  const outra = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br2.ambiente() });
   await br2.avancar(10);
   disparar(br2.documento, "#pagar", "click");
   await outra.descarregar();
@@ -163,14 +163,14 @@ test("18.1 o filtro das propriedades, em unidade", () => {
 test("18.1 o chão vale também nos nomes que a aplicação dá: ecrã, passo, evento e mensagem", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/conta/jose.ferreira@exemplo.ao/movimentos" });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
-  uxda.ecra(`detalhe_${NIF}`);
-  uxda.passo(`confirmar_${CORREIO}`);
-  uxda.track(`pagou_AO06000600000100037131174`);
-  uxda.mensagem(`recusado_${NIF}`, "erro");
-  uxda.ecra("Pagamento Cartão");
-  await uxda.descarregar();
+  uxea.ecra(`detalhe_${NIF}`);
+  uxea.passo(`confirmar_${CORREIO}`);
+  uxea.track(`pagou_AO06000600000100037131174`);
+  uxea.mensagem(`recusado_${NIF}`, "erro");
+  uxea.ecra("Pagamento Cartão");
+  await uxea.descarregar();
   await br.avancar(20000);
   const saiu = JSON.stringify(br.pedidos);
   for (const c of [NIF, CORREIO, "AO06000600000100037131174", "jose.ferreira"]) assert.ok(!saiu.includes(c), `saiu: ${c}`);
@@ -179,14 +179,14 @@ test("18.1 o chão vale também nos nomes que a aplicação dá: ecrã, passo, e
 });
 
 test("18.6 o SDK só fala cifrado, e HTTP só para a própria máquina", async () => {
-  assert.equal(transporteDe("https://ingest.uxda.io"), "cifrado");
+  assert.equal(transporteDe("https://ingest.uxea.io"), "cifrado");
   assert.equal(transporteDe("http://localhost:8710"), "local");
   assert.equal(transporteDe("http://127.0.0.1:8710"), "local");
   assert.equal(transporteDe("http://10.0.2.2:8710"), "local");
   assert.equal(transporteDe("http://[::1]:8710"), "local");
-  assert.equal(transporteDe("http://ingest.uxda.io"), "recusado");
+  assert.equal(transporteDe("http://ingest.uxea.io"), "recusado");
   assert.equal(transporteDe("http://192.168.0.180:8710"), "recusado");
-  assert.equal(transporteDe("ftp://ingest.uxda.io"), "recusado");
+  assert.equal(transporteDe("ftp://ingest.uxea.io"), "recusado");
   assert.equal(transporteDe("isto não é um endereço"), "recusado");
 
   // De ponta a ponta: com um endereço em claro, nem com consentimento sai um pedido,
@@ -195,7 +195,7 @@ test("18.6 o SDK só fala cifrado, e HTTP só para a própria máquina", async (
   const escritas: string[] = [];
   const espia = { ...loja, setItem: (k: string, v: string) => { escritas.push(k); loja.setItem(k, v); } };
   const br = criarBrowser("<button id='b'>Pagar</button>", { loja: espia as any });
-  const sdk = iniciar({ chave: "uxda_tes_x", servidor: "http://ingest.exemplo.ao", ambiente: br.ambiente() });
+  const sdk = iniciar({ chave: "uxea_tes_x", servidor: "http://ingest.exemplo.ao", ambiente: br.ambiente() });
   sdk.consentimento(true);
   disparar(br.documento, "#b", "click");
   sdk.track("compra");
@@ -205,7 +205,7 @@ test("18.6 o SDK só fala cifrado, e HTTP só para a própria máquina", async (
   assert.equal(sdk.diagnostico().transporte, "recusado");
   assert.deepEqual(escritas, [], "o SDK escreveu no dispositivo sem poder enviar");
 
-  const bom = iniciar({ chave: "uxda_tes_x", servidor: "https://ingest.exemplo.ao", ambiente: criarBrowser().ambiente() });
+  const bom = iniciar({ chave: "uxea_tes_x", servidor: "https://ingest.exemplo.ao", ambiente: criarBrowser().ambiente() });
   assert.equal(bom.diagnostico().transporte, "cifrado");
   bom.parar();
 });

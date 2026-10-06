@@ -66,7 +66,7 @@ export async function corrida(nivel: "essencial" | "padrao" | "detalhado", confi
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, versao: 1, amostragem_detalhado: 1, rastreio_individual: true, ...configExtra } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   const tocar = (seletor: string, x: number, y: number) => {
@@ -112,18 +112,18 @@ export async function corrida(nivel: "essencial" | "padrao" | "detalhado", confi
   br.janela.dispararJanela("scroll");
   await br.avancar(1200);
   // A API inteira, com o que um programador da instituição lá poria a depurar.
-  uxda.ecra(`detalhe ${SEGREDOS[1]}`);
-  uxda.passo(`confirmar_${SEGREDOS[0]}`);
-  uxda.track(`pagou_${SEGREDOS[4]}`, { segmento: SEGREDOS[5], canal: SEGREDOS[6], nota: SEGREDOS[7], valor_monetario: 12400 });
-  uxda.mensagem(`recusado_${SEGREDOS[3]}`, "erro", { operacao: `pagamento ${SEGREDOS[1]}` });
-  uxda.erroTecnico("resposta_ilegivel", { operacao: SEGREDOS[2] });
-  await uxda.identificar(SEGREDOS[5]!);
-  uxda.terminal("erro");
+  uxea.ecra(`detalhe ${SEGREDOS[1]}`);
+  uxea.passo(`confirmar_${SEGREDOS[0]}`);
+  uxea.track(`pagou_${SEGREDOS[4]}`, { segmento: SEGREDOS[5], canal: SEGREDOS[6], nota: SEGREDOS[7], valor_monetario: 12400 });
+  uxea.mensagem(`recusado_${SEGREDOS[3]}`, "erro", { operacao: `pagamento ${SEGREDOS[1]}` });
+  uxea.erroTecnico("resposta_ilegivel", { operacao: SEGREDOS[2] });
+  await uxea.identificar(SEGREDOS[5]!);
+  uxea.terminal("erro");
   br.janela.history.state = { idx: 0 };
   br.janela.dispararJanela("popstate", { state: { idx: 0 } });
   (br.documento as any).visibilityState = "hidden";
   disparar(br.documento, "body", "visibilitychange");
-  await uxda.descarregar();
+  await uxea.descarregar();
   await br.avancar(30000);
   return { bruto: JSON.stringify(br.pedidos), eventos: br.eventos(), pedidos: br.pedidos.length };
 }

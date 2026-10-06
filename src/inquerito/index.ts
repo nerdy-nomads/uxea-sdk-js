@@ -7,7 +7,7 @@
  *
  *  - o **gatilho** (`gatilhos.ts`) lê os eventos que o SDK capturou;
  *  - o **sorteio** é a `amostragem` da regra, 0,1 quando não vem, e é o único passo
- *    que o `uxda.inquerito()` salta: quem chama pelo código já decidiu que é agora;
+ *    que o `uxea.inquerito()` salta: quem chama pelo código já decidiu que é agora;
  *  - a **fadiga local** (`fadiga.ts`) é a primeira linha, e poupa o servidor ao que
  *    o dispositivo já sabe;
  *  - o **servidor** é quem manda na fadiga a sério, e **sem resposta dele não se
@@ -62,7 +62,7 @@ export interface LigacaoDeInqueritos {
   arrancar(): void;
   /** Um evento que o SDK emitiu, já validado. */
   observar(ev: Evento): void;
-  /** `uxda.inquerito(chave)`: salta o sorteio, e não salta a fadiga nem o servidor. */
+  /** `uxea.inquerito(chave)`: salta o sorteio, e não salta a fadiga nem o servidor. */
   pedir(chave: string): Promise<boolean>;
   /** Grava já o que estiver por gravar. Para quando a página se esconde. */
   guardar(): void;

@@ -91,7 +91,7 @@ const CASOS: Array<{
 
 for (const caso of CASOS) {
   test(`14.1 o formato ${caso.nome} desenha-se e envia o corpo do contrato`, async () => {
-    const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra(caso.extra)]));
+    const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra(caso.extra)]));
     await concluir(br);
     const raiz = E.raiz(br);
     assert.ok(raiz, "o componente não apareceu");
@@ -113,9 +113,9 @@ for (const caso of CASOS) {
     const eleg = E.pedidosDeElegibilidade(br);
     assert.equal(eleg.length, 1);
     assert.deepEqual(JSON.parse(eleg[0]!.corpo), {
-      inquerito: "facilidade_do_pagamento", anonymous_id: uxda.diagnostico().identidade.anonimo, user_id: "",
+      inquerito: "facilidade_do_pagamento", anonymous_id: uxea.diagnostico().identidade.anonimo, user_id: "",
     });
-    assert.equal(eleg[0]!.cabecalhos["X-UXDA-Key"], "uxda_des_inqueritos");
+    assert.equal(eleg[0]!.cabecalhos["X-UXEA-Key"], "uxea_des_inqueritos");
 
     const enviadas = E.respostasEnviadas(br);
     assert.equal(enviadas.length, 1);
@@ -139,7 +139,7 @@ for (const caso of CASOS) {
     assert.match(corpo.contexto.tentativa_inicio, ISO);
     assert.ok(corpo.contexto.tentativa_inicio <= corpo.ocorrida_em);
     assert.deepEqual(corpo.dispositivo, { platform: "web", app_version: "0.0.0", device_class: "computador" });
-    assert.equal(corpo.anonymous_id, uxda.diagnostico().identidade.anonimo);
+    assert.equal(corpo.anonymous_id, uxea.diagnostico().identidade.anonimo);
     assert.equal(corpo.user_id, "");
     assert.deepEqual(Object.keys(corpo).filter((k) => k !== "nota"), [
       "resposta_id", "inquerito", "formato", "escolhas", "comentario", "ocorrida_em", "enviada_em",
@@ -151,7 +151,7 @@ for (const caso of CASOS) {
     assert.equal(E.raiz(br).querySelector("textarea"), null);
     await br.avancar(AGRADECIMENTO_MS + 10);
     assert.equal(E.hospedeiro(br), null, "o cartão fecha-se sozinho depois de agradecer");
-    assert.equal(uxda.diagnostico().inqueritos.respostasEnviadas, 1);
+    assert.equal(uxea.diagnostico().inqueritos.respostasEnviadas, 1);
   });
 }
 
@@ -172,15 +172,15 @@ test("14.1 o tema e a língua vêm da configuração, sem uma linha de código",
   await concluir(br);
   const raiz = E.raiz(br);
   const cartao = raiz.querySelector(".cartao");
-  assert.equal(cartao.style.getPropertyValue("--uxda-primaria"), "#0a7c3e");
-  assert.equal(cartao.style.getPropertyValue("--uxda-fundo"), "#101418");
-  assert.equal(cartao.style.getPropertyValue("--uxda-texto"), "#f5f5f5");
-  assert.equal(cartao.style.getPropertyValue("--uxda-fonte"), "Georgia, serif");
-  assert.equal(cartao.style.getPropertyValue("--uxda-cantos"), "4px");
+  assert.equal(cartao.style.getPropertyValue("--uxea-primaria"), "#0a7c3e");
+  assert.equal(cartao.style.getPropertyValue("--uxea-fundo"), "#101418");
+  assert.equal(cartao.style.getPropertyValue("--uxea-texto"), "#f5f5f5");
+  assert.equal(cartao.style.getPropertyValue("--uxea-fonte"), "Georgia, serif");
+  assert.equal(cartao.style.getPropertyValue("--uxea-cantos"), "4px");
   // E a folha usa-as todas: um tema escrito numa propriedade que ninguém lê não
   // personaliza nada.
   const folha = String(raiz.querySelector("style")?.textContent ?? "");
-  for (const p of ["--uxda-primaria", "--uxda-fundo", "--uxda-texto", "--uxda-fonte", "--uxda-cantos"]) {
+  for (const p of ["--uxea-primaria", "--uxea-fundo", "--uxea-texto", "--uxea-fonte", "--uxea-cantos"]) {
     assert.ok(folha.includes(`var(${p})`), `a folha não usa ${p}`);
   }
   assert.equal(cartao.getAttribute("lang"), "en");
@@ -194,7 +194,7 @@ test("14.1 o tema e a língua vêm da configuração, sem uma linha de código",
 /* -------------------------------------------------------- não bloqueia */
 
 test("14.1 o cartão não bloqueia: a página responde a tudo enquanto ele está aberto", async () => {
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra()]));
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra()]));
   let cliques = 0;
   br.documento.querySelector("#outro").addEventListener("click", () => cliques++);
   await concluir(br);
@@ -202,7 +202,7 @@ test("14.1 o cartão não bloqueia: a página responde a tudo enquanto ele está
   const cartao = raiz.querySelector(".cartao");
   assert.equal(cartao.getAttribute("role"), "dialog");
   assert.equal(cartao.getAttribute("aria-modal"), "false");
-  assert.ok(raiz.getElementById("uxda-pergunta"), "o diálogo tem nome, pela pergunta");
+  assert.ok(raiz.getElementById("uxea-pergunta"), "o diálogo tem nome, pela pergunta");
 
   // Nada por cima da página: o hospedeiro é a única coisa que entrou no corpo, a
   // página não ficou inerte nem escondida, e a folha não tem camada nenhuma.
@@ -211,12 +211,12 @@ test("14.1 o cartão não bloqueia: a página responde a tudo enquanto ele está
   assert.ok(!/inset\s*:\s*0|100vh\s*;|height\s*:\s*100%/.test(FOLHA), "a folha tem uma camada por cima da página");
   assert.ok(/\.cartao\{position:fixed;right:16px;bottom:16px/.test(FOLHA), "o cartão não está no canto");
 
-  const antes = uxda.diagnostico().eventosEmitidos;
+  const antes = uxea.diagnostico().eventosEmitidos;
   disparar(br.documento, "#outro", "click");
   disparar(br.documento, "#nome", "focusin");
   disparar(br.documento, "#nome", "focusout");
   assert.equal(cliques, 1, "o botão da página deixou de responder com o cartão aberto");
-  assert.ok(uxda.diagnostico().eventosEmitidos > antes, "a captura parou com o cartão aberto");
+  assert.ok(uxea.diagnostico().eventosEmitidos > antes, "a captura parou com o cartão aberto");
   assert.ok(E.hospedeiro(br), "mexer na página não fecha o cartão");
 });
 
@@ -248,15 +248,15 @@ test("14.1 os alvos de toque têm 44 píxeis em ecrãs estreitos e de toque", ()
 
 test("14.2 o servidor diz que não: não aparece, e a sessão não volta a perguntar", async () => {
   for (const motivo of ["limite_de_pedidos", "respondeu_recentemente"]) {
-    const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra({ gatilho: "apos_erro", criterios: [], inicio: [] })]),
+    const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra({ gatilho: "apos_erro", criterios: [], inicio: [] })]),
       { elegibilidade: E.NAO(motivo) });
-    uxda.erroTecnico("resposta_ilegivel");
+    uxea.erroTecnico("resposta_ilegivel");
     await br.avancar(10);
     assert.equal(E.hospedeiro(br), null, `${motivo}: apareceu na mesma`);
-    assert.equal(uxda.diagnostico().inqueritos.ultimoMotivo, motivo);
+    assert.equal(uxea.diagnostico().inqueritos.ultimoMotivo, motivo);
     // Mais erros na mesma sessão: o dispositivo já sabe a resposta.
     for (let i = 0; i < 5; i++) {
-      uxda.erroTecnico(`outro_erro_${i}`);
+      uxea.erroTecnico(`outro_erro_${i}`);
       await br.avancar(2000);
     }
     assert.equal(E.pedidosDeElegibilidade(br).length, 1, `${motivo}: perguntou outra vez ao servidor`);
@@ -264,11 +264,11 @@ test("14.2 o servidor diz que não: não aparece, e a sessão não volta a pergu
 });
 
 test("14.2 inativo: não aparece, e esse inquérito não se pergunta outra vez nesta página", async () => {
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra({ gatilho: "apos_erro", criterios: [], inicio: [] })]),
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra({ gatilho: "apos_erro", criterios: [], inicio: [] })]),
     { elegibilidade: E.NAO("inativo") });
-  uxda.erroTecnico("a");
+  uxea.erroTecnico("a");
   await br.avancar(2000);
-  uxda.erroTecnico("b");
+  uxea.erroTecnico("b");
   await br.avancar(10);
   assert.equal(E.hospedeiro(br), null);
   assert.equal(E.pedidosDeElegibilidade(br).length, 1);
@@ -285,12 +285,12 @@ test("14.2 sem resposta do servidor não se mostra: rede em baixo, avaria, lixo,
     ["mostrar em texto", () => ({ estado: 200, corpo: JSON.stringify({ sucesso: true, dados: { mostrar: "true", pedido_id: "p" } }) })],
   ];
   for (const [nome, elegibilidade] of MUDOS) {
-    const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra()]), { elegibilidade });
+    const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra()]), { elegibilidade });
     await concluir(br);
     await br.avancar(3000);
     assert.equal(E.hospedeiro(br), null, `${nome}: apareceu sem licença do servidor`);
     assert.equal(E.pedidosDeElegibilidade(br).length, 1, `${nome}: não chegou a perguntar`);
-    if (nome !== "mostrar sem pedido") assert.equal(uxda.diagnostico().inqueritos.ultimoMotivo, "sem_resposta", nome);
+    if (nome !== "mostrar sem pedido") assert.equal(uxea.diagnostico().inqueritos.ultimoMotivo, "sem_resposta", nome);
   }
 });
 
@@ -316,7 +316,7 @@ test("14.2 a amostragem por omissão é 0,1, e a da regra é a que se usa", asyn
           pedidos++;
           return { estado: 200, corpo: JSON.stringify({ sucesso: true, dados: { mostrar: false, motivo: "limite_de_pedidos", pedido_id: "" } }) };
         },
-        servidor: E.SERVIDOR, chave: "uxda_des_t", configuracao: () => cfg,
+        servidor: E.SERVIDOR, chave: "uxea_des_t", configuracao: () => cfg,
         identidade: () => ({ anonimo: `anonimo-${i}`, utilizador: null, sessao: `sessao-${i}` }),
         dispositivo: () => ({ platform: "web" }), ecra: () => "/",
       });
@@ -334,10 +334,10 @@ test("14.2 a amostragem por omissão é 0,1, e a da regra é a que se usa", asyn
 });
 
 test("14.2 fora do sorteio não se pergunta nada ao servidor", async () => {
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra({ amostragem: 0.3 })]), { aleatorio: () => 0.31 });
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra({ amostragem: 0.3 })]), { aleatorio: () => 0.31 });
   await concluir(br);
   assert.equal(E.pedidosDeElegibilidade(br).length, 0);
-  assert.equal(uxda.diagnostico().inqueritos.ultimoMotivo, "fora_da_amostra");
+  assert.equal(uxea.diagnostico().inqueritos.ultimoMotivo, "fora_da_amostra");
 });
 
 /* ------------------------------------------------------ fadiga local */
@@ -353,13 +353,13 @@ test("14.2 fadiga local: quem já foi questionado não chega a perguntar ao serv
   const s2 = await E.sessaoSeguinte(s1.br, LOJA, config);
   assert.equal(E.pedidosDeElegibilidade(s2.br).length, 0, "perguntou ao servidor o que o dispositivo já sabia");
   assert.equal(E.hospedeiro(s2.br), null);
-  assert.equal(s2.uxda.diagnostico().inqueritos.ultimoMotivo, "limite_de_pedidos");
+  assert.equal(s2.uxea.diagnostico().inqueritos.ultimoMotivo, "limite_de_pedidos");
 
   // Com um limite largo, o que trava é ter respondido há pouco.
   const largo = E.inqueritos([E.regra({ gatilho: "amostragem", criterios: [], inicio: [] })], { fadiga: { max_pedidos: 10, periodo_dias: 30, excluir_respondeu_dias: 90 } });
   const s3 = await E.sessaoSeguinte(s2.br, LOJA, largo);
   assert.equal(E.pedidosDeElegibilidade(s3.br).length, 0);
-  assert.equal(s3.uxda.diagnostico().inqueritos.ultimoMotivo, "respondeu_recentemente");
+  assert.equal(s3.uxea.diagnostico().inqueritos.ultimoMotivo, "respondeu_recentemente");
 });
 
 test("14.2 nunca dois ao mesmo tempo, e nunca mais do que um por sessão", async () => {
@@ -367,17 +367,17 @@ test("14.2 nunca dois ao mesmo tempo, e nunca mais do que um por sessão", async
     E.regra({ chave: "a", gatilho: "apos_erro", criterios: [], inicio: [] }),
     E.regra({ chave: "b", gatilho: "apos_erro", criterios: [], inicio: [] }),
   ], { fadiga: { max_pedidos: 10, periodo_dias: 30, excluir_respondeu_dias: 0 } });
-  const { br, uxda } = await E.comSdk(LOJA, duas);
-  uxda.erroTecnico("resposta_ilegivel");
+  const { br, uxea } = await E.comSdk(LOJA, duas);
+  uxea.erroTecnico("resposta_ilegivel");
   await br.avancar(10);
-  assert.equal(br.documento.querySelectorAll("uxda-inquerito").length, 1);
+  assert.equal(br.documento.querySelectorAll("uxea-inquerito").length, 1);
   assert.equal(E.pedidosDeElegibilidade(br).length, 1, "o segundo inquérito do mesmo evento perguntou na mesma");
   E.despachar(E.raiz(br).querySelector(".fechar"), "click");
-  uxda.erroTecnico("outro_erro");
+  uxea.erroTecnico("outro_erro");
   await br.avancar(10);
   assert.equal(E.hospedeiro(br), null);
   assert.equal(E.pedidosDeElegibilidade(br).length, 1);
-  assert.equal(uxda.diagnostico().inqueritos.ultimoMotivo, "ja_mostrado_nesta_sessao");
+  assert.equal(uxea.diagnostico().inqueritos.ultimoMotivo, "ja_mostrado_nesta_sessao");
 });
 
 /* ---------------------------------------------- os gatilhos, de ponta a ponta */
@@ -415,7 +415,7 @@ test("14.2 apos_abandono: com mais de 24 horas pelo meio, esquece-se", async () 
 });
 
 test("14.2 apos_erro: uma mensagem de erro na página dispara, sem instrumentação", async () => {
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra({ gatilho: "apos_erro", criterios: [], inicio: [] })]), { caminho: "/checkout" });
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra({ gatilho: "apos_erro", criterios: [], inicio: [] })]), { caminho: "/checkout" });
   const aviso = br.documento.createElement("div");
   aviso.setAttribute("role", "alert");
   aviso.setAttribute("class", "erro");
@@ -423,7 +423,7 @@ test("14.2 apos_erro: uma mensagem de erro na página dispara, sem instrumentaç
   br.documento.querySelector("#avisos").appendChild(aviso);
   await br.avancar(10);
   assert.ok(E.hospedeiro(br));
-  assert.equal(uxda.diagnostico().inqueritos.ultimoGatilho, "apos_erro:facilidade_do_pagamento");
+  assert.equal(uxea.diagnostico().inqueritos.ultimoGatilho, "apos_erro:facilidade_do_pagamento");
 });
 
 test("14.2 primeira_utilizacao: a primeira vez neste dispositivo, e só essa", async () => {
@@ -443,7 +443,7 @@ test("14.2 primeira_utilizacao: a primeira vez neste dispositivo, e só essa", a
   disparar(s2.br.documento, "#outro", "click");
   await s2.br.avancar(10);
   assert.equal(E.pedidosDeElegibilidade(s2.br).length, 0, "a segunda utilização foi tratada como primeira");
-  assert.equal(s2.uxda.diagnostico().inqueritos.ultimoGatilho, "");
+  assert.equal(s2.uxea.diagnostico().inqueritos.ultimoGatilho, "");
 });
 
 test("14.2 amostragem: no arranque da sessão, e um recarregamento não sorteia outra vez", async () => {
@@ -454,21 +454,21 @@ test("14.2 amostragem: no arranque da sessão, e um recarregamento não sorteia 
   await s1.br.avancar(500);
   // A mesma sessão, outra página.
   const recarregada = await E.sessaoSeguinte(s1.br, LOJA, config, { depoisMs: 60_000 });
-  assert.equal(recarregada.uxda.diagnostico().inqueritos.ultimoGatilho, "", "um recarregamento sorteou outra vez");
+  assert.equal(recarregada.uxea.diagnostico().inqueritos.ultimoGatilho, "", "um recarregamento sorteou outra vez");
   assert.equal(E.pedidosDeElegibilidade(recarregada.br).length, 0);
 });
 
-/* ------------------------------------------------- uxda.inquerito(chave) */
+/* ------------------------------------------------- uxea.inquerito(chave) */
 
-test("14.2 uxda.inquerito salta o sorteio, e não salta o servidor nem a fadiga", async () => {
+test("14.2 uxea.inquerito salta o sorteio, e não salta o servidor nem a fadiga", async () => {
   const config = E.inqueritos([E.regra({ gatilho: "amostragem", criterios: [], inicio: [], amostragem: 0, atraso_ms: 1500 })]);
   // O sorteio diz sempre que não, e a amostragem da regra é zero.
-  const { br, uxda } = await E.comSdk(LOJA, config, { aleatorio: () => 0.999, caminho: "/" });
+  const { br, uxea } = await E.comSdk(LOJA, config, { aleatorio: () => 0.999, caminho: "/" });
   assert.equal(E.hospedeiro(br), null);
-  assert.equal(await uxda.inquerito("nao_existe"), false);
-  assert.equal(uxda.diagnostico().inqueritos.ultimoMotivo, "inquerito_desconhecido");
+  assert.equal(await uxea.inquerito("nao_existe"), false);
+  assert.equal(uxea.diagnostico().inqueritos.ultimoMotivo, "inquerito_desconhecido");
 
-  const pedido = uxda.inquerito("facilidade_do_pagamento");
+  const pedido = uxea.inquerito("facilidade_do_pagamento");
   await br.avancar(1000);
   assert.equal(E.hospedeiro(br), null, "o atraso da regra não foi respeitado");
   await br.avancar(600);
@@ -480,21 +480,21 @@ test("14.2 uxda.inquerito salta o sorteio, e não salta o servidor nem a fadiga"
   await br.avancar(AGRADECIMENTO_MS + 10);
 
   // A fadiga vale: um por sessão.
-  assert.equal(await uxda.inquerito("facilidade_do_pagamento"), false);
+  assert.equal(await uxea.inquerito("facilidade_do_pagamento"), false);
   assert.equal(E.pedidosDeElegibilidade(br).length, 1);
 
   // E o servidor vale: com um não, não aparece.
   const outro = await E.comSdk(LOJA, config, { aleatorio: () => 0.999, elegibilidade: E.NAO("respondeu_recentemente") });
-  assert.equal(await outro.uxda.inquerito("facilidade_do_pagamento"), false);
+  assert.equal(await outro.uxea.inquerito("facilidade_do_pagamento"), false);
   assert.equal(E.hospedeiro(outro.br), null);
 });
 
-test("14.2 uxda.inquerito chamado antes de a configuração chegar espera por ela", async () => {
+test("14.2 uxea.inquerito chamado antes de a configuração chegar espera por ela", async () => {
   const br = criarBrowser(LOJA, { caminho: "/" });
   E.servir(br, E.inqueritos([E.regra({ atraso_ms: 0 })]));
   const { iniciar } = await import("../index.ts");
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: E.SERVIDOR, ambiente: { ...br.ambiente(), aleatorio: () => 0.9 } });
-  const pedido = uxda.inquerito("facilidade_do_pagamento");
+  const uxea = iniciar({ chave: "uxea_des_t", servidor: E.SERVIDOR, ambiente: { ...br.ambiente(), aleatorio: () => 0.9 } });
+  const pedido = uxea.inquerito("facilidade_do_pagamento");
   await br.avancar(10);
   assert.equal(await pedido, true);
 });
@@ -536,8 +536,8 @@ test("14.1 o contexto corta-se em bytes, como a ingestão o mede, e sem partir u
 });
 
 test("14.1 a resposta é anónima por omissão: o pseudónimo vai, e só para a fadiga", async () => {
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra()]));
-  await uxda.identificar("ana.silva@exemplo.ao");
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra()]));
+  await uxea.identificar("ana.silva@exemplo.ao");
   await concluir(br);
   E.escolher(br, "5");
   await E.enviarResposta(br);
@@ -581,7 +581,7 @@ test("14.1 uma falha de rede tenta outra vez, uma vez, com a mesma resposta_id",
   E.despachar(E.raiz(mudo.br).querySelector(".enviar"), "click");
   await mudo.br.avancar(5000);
   assert.equal(mudo.br.pedidos.filter((p) => p.url.endsWith("/v1/respostas")).length, 2);
-  assert.equal(mudo.uxda.diagnostico().inqueritos.ultimoMotivo, "resposta_falhou");
+  assert.equal(mudo.uxea.diagnostico().inqueritos.ultimoMotivo, "resposta_falhou");
 });
 
 /* ----------------------------------------------------- a captura não o vê */
@@ -589,7 +589,7 @@ test("14.1 uma falha de rede tenta outra vez, uma vez, com a mesma resposta_id",
 test("14.1 a captura não vê o componente: nem toques, nem campo, nem teclas", async () => {
   // No nível detalhado e com o rastreio individual, que é quando a captura emite
   // mais, e por isso quando há mais caminhos por onde o componente podia entrar.
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra()]), { nivel: "detalhado", rastreioIndividual: true });
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra()]), { nivel: "detalhado", rastreioIndividual: true });
   await concluir(br);
   await br.avancar(2000);
   const host = E.hospedeiro(br);
@@ -605,47 +605,47 @@ test("14.1 a captura não vê o componente: nem toques, nem campo, nem teclas", 
       ["pointerdown", { clientX: 320, clientY: 700 }], ["click", {}], ["focusin", {}],
       ["keydown", { key: "a" }], ["input", { inputType: "insertText" }], ["focusout", {}],
     ] as Array<[string, Record<string, unknown>]>) {
-      disparar(br.documento, "uxda-inquerito", tipo, extras);
+      disparar(br.documento, "uxea-inquerito", tipo, extras);
     }
   };
-  const antes = uxda.diagnostico().eventosEmitidos;
+  const antes = uxea.diagnostico().eventosEmitidos;
   usar();
   // E o uso a sério, lá dentro.
   E.escolher(br, "5");
   E.escrever(br, "tudo bem");
   await br.avancar(3000);
-  assert.equal(uxda.diagnostico().eventosEmitidos, antes, "a captura mediu o componente de avaliação");
+  assert.equal(uxea.diagnostico().eventosEmitidos, antes, "a captura mediu o componente de avaliação");
 
   // A prova de que o ensaio falharia: sem a marca, os mesmos eventos saem.
-  host.removeAttribute("data-uxda-ignorar");
+  host.removeAttribute("data-uxea-ignorar");
   usar();
   await br.avancar(3000);
-  assert.ok(uxda.diagnostico().eventosEmitidos > antes, "sem a marca, a captura também não via nada: o ensaio não provava");
+  assert.ok(uxea.diagnostico().eventosEmitidos > antes, "sem a marca, a captura também não via nada: o ensaio não provava");
 });
 
 test("14.1 a marca vale para o que está debaixo dela: campos, mensagens e toques", async () => {
   const pagina = `
-    <div data-uxda-ignorar><input id="dentro"><button id="botao-dentro">ok</button><div id="avisos-dentro"></div></div>
+    <div data-uxea-ignorar><input id="dentro"><button id="botao-dentro">ok</button><div id="avisos-dentro"></div></div>
     <input id="fora"><div id="avisos-fora"></div>
   `;
-  const { br, uxda } = await E.comSdk(pagina, E.inqueritos([]), { nivel: "detalhado" });
+  const { br, uxea } = await E.comSdk(pagina, E.inqueritos([]), { nivel: "detalhado" });
   const aviso = (onde: string) => {
     const el = br.documento.createElement("div");
     el.setAttribute("role", "alert");
     el.textContent = "Erro no pagamento";
     br.documento.querySelector(onde).appendChild(el);
   };
-  const antes = uxda.diagnostico().eventosEmitidos;
+  const antes = uxea.diagnostico().eventosEmitidos;
   for (const t of ["focusin", "input", "focusout"]) disparar(br.documento, "#dentro", t, { inputType: "insertText" });
   disparar(br.documento, "#botao-dentro", "click");
   aviso("#avisos-dentro");
   await br.avancar(3000);
-  assert.equal(uxda.diagnostico().eventosEmitidos, antes);
+  assert.equal(uxea.diagnostico().eventosEmitidos, antes);
 
   for (const t of ["focusin", "input", "focusout"]) disparar(br.documento, "#fora", t, { inputType: "insertText" });
   aviso("#avisos-fora");
   await br.avancar(3000);
-  await uxda.descarregar();
+  await uxea.descarregar();
   const tipos = br.eventos().map((e: any) => e.event_type);
   assert.ok(tipos.includes("campo") && tipos.includes("mensagem"), `fora da marca a captura devia ver: ${tipos.join(", ")}`);
 });
@@ -654,12 +654,12 @@ test("14.1 a marca vale para o que está debaixo dela: campos, mensagens e toque
 
 test("14.1 um desenho que rebenta não chega à anfitriã nem para a captura", async () => {
   limparErros();
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra()]));
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra()]));
   let cliques = 0;
   br.documento.querySelector("#outro").addEventListener("click", () => cliques++);
   const original = br.documento.createElement.bind(br.documento);
   br.documento.createElement = (etiqueta: string) => {
-    if (etiqueta === "uxda-inquerito") throw new Error("desenho partido");
+    if (etiqueta === "uxea-inquerito") throw new Error("desenho partido");
     return original(etiqueta);
   };
 
@@ -674,57 +674,57 @@ test("14.1 um desenho que rebenta não chega à anfitriã nem para a captura", a
   assert.equal(E.hospedeiro(br), null);
   assert.ok(errosInternos().some((r) => r.onde.startsWith("inquerito.")), "a avaria não ficou registada por dentro");
 
-  const antes = uxda.diagnostico().eventosEmitidos;
+  const antes = uxea.diagnostico().eventosEmitidos;
   disparar(br.documento, "#outro", "click");
   assert.equal(cliques, 1, "a anfitriã deixou de responder");
-  assert.ok(uxda.diagnostico().eventosEmitidos > antes, "a captura parou depois da avaria");
-  assert.equal(typeof uxda.diagnostico().inqueritos.regras, "number");
+  assert.ok(uxea.diagnostico().eventosEmitidos > antes, "a captura parou depois da avaria");
+  assert.equal(typeof uxea.diagnostico().inqueritos.regras, "number");
 });
 
 test("14.1 um sorteio que lança, um armazenamento hostil e uma configuração absurda não partem nada", async () => {
   limparErros();
   const br = criarBrowser(LOJA, { caminho: "/pagamento" });
   E.servir(br, { lista: [E.regra(), { chave: {}, formato: 7 }, "lixo"], tema: 5, fadiga: "x" });
-  br.loja.setItem("uxda.inqueritos", "{{{ não é json");
-  const uxda = await E.arrancar(br, () => { throw new Error("gerador partido"); });
+  br.loja.setItem("uxea.inqueritos", "{{{ não é json");
+  const uxea = await E.arrancar(br, () => { throw new Error("gerador partido"); });
   let escapou: unknown = null;
   try {
     await concluir(br);
-    await uxda.inquerito(null as any);
-    await uxda.inquerito({} as any);
+    await uxea.inquerito(null as any);
+    await uxea.inquerito({} as any);
     await br.avancar(100);
   } catch (e) {
     escapou = e;
   }
   assert.equal(escapou, null);
-  assert.equal(uxda.diagnostico().inqueritos.regras, 1, "a regra boa não sobreviveu à má");
+  assert.equal(uxea.diagnostico().inqueritos.regras, 1, "a regra boa não sobreviveu à má");
   assert.ok(errosInternos().some((r) => r.onde === "inquerito.tentar"));
-  const antes = uxda.diagnostico().eventosEmitidos;
+  const antes = uxea.diagnostico().eventosEmitidos;
   disparar(br.documento, "#outro", "click");
-  assert.ok(uxda.diagnostico().eventosEmitidos > antes);
-  uxda.parar();
+  assert.ok(uxea.diagnostico().eventosEmitidos > antes);
+  uxea.parar();
   assert.equal(E.hospedeiro(br), null);
 });
 
 test("14.1 parar desliga os inquéritos: o que estava à espera não aparece", async () => {
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra({ atraso_ms: 5000 })]));
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra({ atraso_ms: 5000 })]));
   await concluir(br);
-  uxda.parar();
+  uxea.parar();
   await br.avancar(6000);
   assert.equal(E.hospedeiro(br), null);
 
   const aberto = await E.comSdk(LOJA, E.inqueritos([E.regra()]));
   await concluir(aberto.br);
   assert.ok(E.hospedeiro(aberto.br));
-  aberto.uxda.parar();
+  aberto.uxea.parar();
   assert.equal(E.hospedeiro(aberto.br), null, "parar deixou o cartão na página");
 });
 
 test("14.1 o diagnóstico diz quantas regras, o último gatilho e o último motivo", async () => {
-  const { br, uxda } = await E.comSdk(LOJA, E.inqueritos([E.regra(), E.regra({ chave: "outra" })]));
-  assert.deepEqual(uxda.diagnostico().inqueritos, { regras: 2, ultimoGatilho: "", ultimoMotivo: "", aVista: false, respostasEnviadas: 0 });
+  const { br, uxea } = await E.comSdk(LOJA, E.inqueritos([E.regra(), E.regra({ chave: "outra" })]));
+  assert.deepEqual(uxea.diagnostico().inqueritos, { regras: 2, ultimoGatilho: "", ultimoMotivo: "", aVista: false, respostasEnviadas: 0 });
   await concluir(br);
-  const d = uxda.diagnostico().inqueritos;
+  const d = uxea.diagnostico().inqueritos;
   assert.equal(d.ultimoGatilho, "apos_conclusao:facilidade_do_pagamento");
   assert.equal(d.ultimoMotivo, "pode");
   assert.equal(d.aVista, true);
@@ -734,6 +734,6 @@ test("14.1 sem inquéritos, o armazenamento nem se toca", async () => {
   const { br } = await E.comSdk(LOJA, E.inqueritos([]));
   await concluir(br);
   await br.avancar(1000);
-  assert.equal(br.loja.getItem("uxda.inqueritos"), null);
+  assert.equal(br.loja.getItem("uxea.inqueritos"), null);
   assert.equal(E.pedidosDeElegibilidade(br).length, 0);
 });

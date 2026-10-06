@@ -70,7 +70,7 @@ function obter(caminho: string): string | null {
   if (existsSync(ficheiro)) return readFileSync(ficheiro, "utf8");
   const url = `https://web.archive.org/web/${QUANDO}id_/${SITIO}${caminho}`;
   const r = spawnSync("curl", [
-    "-sL", "--compressed", "--max-time", "90", "-A", "uxda-inventario-ensaio/0.1 (cartao 10.1)", url,
+    "-sL", "--compressed", "--max-time", "90", "-A", "uxea-inventario-ensaio/0.1 (cartao 10.1)", url,
   ], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const html = r.stdout ?? "";
   if (r.status !== 0 || html.length < 2000) return null;
@@ -173,7 +173,7 @@ for (let i = 0; i < eventos.length; i += 500) {
   const lote = eventos.slice(i, i + 500);
   const r = await fetch(`${INGESTAO}/v1/eventos`, {
     method: "POST",
-    headers: { "content-type": "application/json", "X-UXDA-Key": CHAVE },
+    headers: { "content-type": "application/json", "X-UXEA-Key": CHAVE },
     body: JSON.stringify({
       versao_protocolo: 1, enviado_em: new Date().toISOString(),
       sdk: "ensaio-10-1", versao_sdk: "0.0.0", eventos: lote,
@@ -199,7 +199,7 @@ if (conta.rejeitados > 0) {
 await new Promise((r) => setTimeout(r, 25_000));
 
 async function catalogo(query: string): Promise<any> {
-  const r = await fetch(`${API}/v1/inventario?${query}`, { headers: { "X-UXDA-Key": CHAVE } });
+  const r = await fetch(`${API}/v1/inventario?${query}`, { headers: { "X-UXEA-Key": CHAVE } });
   const corpo = await r.json();
   if (!corpo?.sucesso) throw new Error(JSON.stringify(corpo).slice(0, 300));
   return corpo.dados;

@@ -1,7 +1,7 @@
 /**
  * O que os inquéritos guardam no dispositivo, entre páginas e entre sessões.
  *
- * Uma chave só no armazenamento local, `uxda.inqueritos`, e quatro coisas lá
+ * Uma chave só no armazenamento local, `uxea.inqueritos`, e quatro coisas lá
  * dentro, cada uma por uma razão que não se resolve em memória:
  *
  *   sessao / mostradoNaSessao   um inquérito por sessão, e uma sessão atravessa
@@ -24,7 +24,7 @@
  */
 import type { Armazenamento } from "../core/tipos.ts";
 
-export const CHAVE_ESTADO = "uxda.inqueritos";
+export const CHAVE_ESTADO = "uxea.inqueritos";
 
 /** Uma tarefa começada, à espera de fim. */
 export interface Aberta {

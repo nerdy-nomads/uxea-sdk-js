@@ -141,7 +141,7 @@ export class Fila {
     try {
       const corpo = JSON.stringify({
         versao_protocolo: 1,
-        sdk: "uxda-sdk-js",
+        sdk: "uxea-sdk-js",
         versao_sdk: VERSAO,
         enviado_em: new Date(this.amb.agora()).toISOString(),
         eventos: lote,

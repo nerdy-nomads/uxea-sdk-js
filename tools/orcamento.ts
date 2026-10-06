@@ -26,11 +26,11 @@ console.log("\norçamento do SDK\n");
 
 /* ---------------------------------------------------------------- tamanho */
 
-if (!existsSync("dist/uxda.js")) {
-  console.error("  FALHA  dist/uxda.js não existe: correr `npm run build` primeiro");
+if (!existsSync("dist/uxea.js")) {
+  console.error("  FALHA  dist/uxea.js não existe: correr `npm run build` primeiro");
   process.exit(1);
 }
-const bruto = readFileSync("dist/uxda.js");
+const bruto = readFileSync("dist/uxea.js");
 const comprimido = gzipSync(bruto).length;
 linha("tamanho do pacote (bruto)", `${(bruto.length / 1024).toFixed(1)} KB`, "300 KB", bruto.length < LIMITE_BYTES);
 linha("tamanho do pacote (gzip)", `${(comprimido / 1024).toFixed(1)} KB`, "300 KB", comprimido < LIMITE_BYTES);
@@ -39,7 +39,7 @@ linha("tamanho do pacote (gzip)", `${(comprimido / 1024).toFixed(1)} KB`, "300 K
 
 const N = 2000;
 const br = criarBrowser(`<button id="b">ok</button><form id="f"><input id="i"></form>`, { caminho: "/orcamento" });
-const uxda = iniciar({ chave: "uxda_des_orcamento", servidor: "https://ingest.local", ambiente: br.ambiente() });
+const uxea = iniciar({ chave: "uxea_des_orcamento", servidor: "https://ingest.local", ambiente: br.ambiente() });
 await br.avancar(10);
 
 const t0 = Number(process.hrtime.bigint()) / 1e6;
@@ -52,7 +52,7 @@ for (let i = 0; i < N; i++) {
   }
 }
 const decorrido = Number(process.hrtime.bigint()) / 1e6 - t0;
-const d = uxda.diagnostico();
+const d = uxea.diagnostico();
 const eventos = d.eventosEmitidos;
 const porEvento = decorrido / Math.max(1, eventos);
 

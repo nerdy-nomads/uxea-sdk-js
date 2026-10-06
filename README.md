@@ -1,6 +1,6 @@
 # sdk-js
 
-> Peça do workspace **[ux-data-analysis](https://github.com/nerdy-nomads/ux-data-analysis)**, onde vive como
+> Peça do workspace **[ux-event-analytics](https://github.com/nerdy-nomads/ux-event-analytics)**, onde vive como
 > submódulo em `sdk/sdk-js`. O plano, o quadro e o documento de arquitetura estão lá.
 
 O SDK web. Cola-se uma linha no `head` e começa a medir, **sem nenhuma configuração
@@ -47,7 +47,7 @@ promessa, e vale a pena saber cedo.
 Os cartões `2.1` a `2.7` estão fechados. A integração é isto, e mais nada:
 
 ```html
-<script src="https://cdn.uxda.io/uxda.js" data-chave="uxda_pro_..."></script>
+<script src="https://cdn.uxea.io/uxea.js" data-chave="uxea_pro_..."></script>
 ```
 
 | Caminho | O que é |
@@ -65,7 +65,7 @@ Os cartões `2.1` a `2.7` estão fechados. A integração é isto, e mais nada:
 
 ```bash
 npm run check      # tipos, 233 ensaios, empacotamento e os dois orçamentos
-npm run build      # dist/uxda.js (CDN, arranca sozinho) e dist/uxda.mjs (npm)
+npm run build      # dist/uxea.js (CDN, arranca sozinho) e dist/uxea.mjs (npm)
 ./exemplo/servir.sh <chave> 8091     # a loja de ensaio, num browser a sério
 ```
 
@@ -115,28 +115,28 @@ aplicação anfitriã.
 
 | Chamada | Para quê |
 |---|---|
-| `uxda.track(nome, extras?)` | Marcação manual, para o que o browser não deixa ver (`RF-CAP-08`). É a **exceção**: se se tornar a regra, o produto perdeu a promessa |
-| `uxda.identificar(id)` | Liga o anónimo ao pseudónimo depois da autenticação. **O que parecer um identificador direto é resumido aqui**, e o original não sai do dispositivo |
-| `uxda.esquecer()` | Termina a ligação: os eventos seguintes voltam a ser anónimos |
-| `uxda.ecra(nome)` | Declara um ecrã, para aplicações que mudam de vista sem mudar o URL |
-| `uxda.passo(nome)` | Declara uma transição de passo dentro da tarefa (`RF-GRA-20`), para fluxos que acontecem no mesmo ecrã |
-| `uxda.terminal(estado)` | Fecha a tentativa sem ambiguidade: `sucesso`, `erro`, `abandonado` ou `expirado` |
-| `uxda.mensagem(chave, tipo, extras?)` | Declara uma mensagem apresentada ao utilizador. Para o que o SDK não vê sozinho: um `canvas`, uma notificação do sistema, ou uma aplicação que prefere declarar a chave |
-| `uxda.erroTecnico(chave, props?)` | Declara um erro que **ninguém viu no ecrã** (`RF-MSG-06`): uma promessa rejeitada, uma resposta ilegível, um passo que falhou em silêncio |
-| `uxda.inquerito(chave)` | Pede um inquérito pelo código da instituição (`RF-PER-04`). **Salta o sorteio e não salta mais nada**: a fadiga, a pergunta ao servidor e o limite de um por sessão valem na mesma. Devolve `true` quando o componente apareceu |
-| `uxda.descarregar()` | Força o envio do que está na fila |
-| `uxda.parar()` | Desliga tudo, sem deixar ouvintes atrás |
-| `uxda.consentimento(dado)` | O sinal de consentimento da pessoa (`RNF-PRI-12`, ADR 0047). Com `data-consentimento="exigido"` no `script`, nada corre até `consentimento(true)`; `consentimento(false)` para já, apaga a fila e os identificadores do dispositivo e guarda só a recusa |
-| `uxda.diagnostico()` | O que o SDK sabe: identidade, fila, configuração, custo no fio principal e erros internos |
+| `uxea.track(nome, extras?)` | Marcação manual, para o que o browser não deixa ver (`RF-CAP-08`). É a **exceção**: se se tornar a regra, o produto perdeu a promessa |
+| `uxea.identificar(id)` | Liga o anónimo ao pseudónimo depois da autenticação. **O que parecer um identificador direto é resumido aqui**, e o original não sai do dispositivo |
+| `uxea.esquecer()` | Termina a ligação: os eventos seguintes voltam a ser anónimos |
+| `uxea.ecra(nome)` | Declara um ecrã, para aplicações que mudam de vista sem mudar o URL |
+| `uxea.passo(nome)` | Declara uma transição de passo dentro da tarefa (`RF-GRA-20`), para fluxos que acontecem no mesmo ecrã |
+| `uxea.terminal(estado)` | Fecha a tentativa sem ambiguidade: `sucesso`, `erro`, `abandonado` ou `expirado` |
+| `uxea.mensagem(chave, tipo, extras?)` | Declara uma mensagem apresentada ao utilizador. Para o que o SDK não vê sozinho: um `canvas`, uma notificação do sistema, ou uma aplicação que prefere declarar a chave |
+| `uxea.erroTecnico(chave, props?)` | Declara um erro que **ninguém viu no ecrã** (`RF-MSG-06`): uma promessa rejeitada, uma resposta ilegível, um passo que falhou em silêncio |
+| `uxea.inquerito(chave)` | Pede um inquérito pelo código da instituição (`RF-PER-04`). **Salta o sorteio e não salta mais nada**: a fadiga, a pergunta ao servidor e o limite de um por sessão valem na mesma. Devolve `true` quando o componente apareceu |
+| `uxea.descarregar()` | Força o envio do que está na fila |
+| `uxea.parar()` | Desliga tudo, sem deixar ouvintes atrás |
+| `uxea.consentimento(dado)` | O sinal de consentimento da pessoa (`RNF-PRI-12`, ADR 0047). Com `data-consentimento="exigido"` no `script`, nada corre até `consentimento(true)`; `consentimento(false)` para já, apaga a fila e os identificadores do dispositivo e guarda só a recusa |
+| `uxea.diagnostico()` | O que o SDK sabe: identidade, fila, configuração, custo no fio principal e erros internos |
 
 ```html
 <!-- O que é obrigatório: a chave. -->
-<script src="https://cdn.uxda.io/uxda.js" data-chave="uxda_pro_..."></script>
+<script src="https://cdn.uxea.io/uxea.js" data-chave="uxea_pro_..."></script>
 
 <!-- O que é opcional, e para que serve. -->
-<script src="https://cdn.uxda.io/uxda.js"
-        data-chave="uxda_pro_..."
-        data-servidor="https://ingest.uxda.io"
+<script src="https://cdn.uxea.io/uxea.js"
+        data-chave="uxea_pro_..."
+        data-servidor="https://ingest.uxea.io"
         data-versao="4.2.0"
         data-automatico="false"></script>
 ```
@@ -144,8 +144,8 @@ aplicação anfitriã.
 Por npm, para quem quer decidir o momento do arranque:
 
 ```js
-import { iniciar } from "@uxda/sdk-js";
-const uxda = iniciar({ chave: "uxda_pro_...", versao: "4.2.0" });
+import { iniciar } from "@uxea/sdk-js";
+const uxea = iniciar({ chave: "uxea_pro_...", versao: "4.2.0" });
 ```
 
 ## Só fala cifrado
@@ -197,7 +197,7 @@ mesmo tempo, e é por isso que vale a pena:
 
 ```html
 <!-- Uma linha, e não muda nada no que a pessoa vê. -->
-<div role="alert" data-uxda-mensagem="saldo_insuficiente">Saldo insuficiente</div>
+<div role="alert" data-uxea-mensagem="saldo_insuficiente">Saldo insuficiente</div>
 ```
 
 | Sem chave, só com texto | Com chave |
@@ -207,7 +207,7 @@ mesmo tempo, e é por isso que vale a pena:
 | Mudar a redação parte a série histórica | A série sobrevive a qualquer reescrita |
 | A mascaragem é uma heurística, e mascara a mais | Não há heurística nenhuma pelo meio |
 
-O atributo pode ser `data-uxda-mensagem`, `data-mensagem`, `data-message-key`,
+O atributo pode ser `data-uxea-mensagem`, `data-mensagem`, `data-message-key`,
 `data-i18n` ou `data-l10n-id`: se já usa uma biblioteca de tradução, **já tem a
 chave** e não precisa de escrever nada.
 
@@ -343,4 +343,4 @@ bateria de fuga: aquela olha para o tráfego, esta olha para o que o código sab
 ## Ler antes de mexer
 
 A secção 5.1 do documento de requisitos, e as decisões **D-03** e **D-10** em
-[`docs/arquitetura.html`](https://github.com/nerdy-nomads/ux-data-analysis/blob/master/docs/arquitetura.html).
+[`docs/arquitetura.html`](https://github.com/nerdy-nomads/ux-event-analytics/blob/master/docs/arquitetura.html).

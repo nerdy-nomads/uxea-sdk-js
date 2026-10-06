@@ -20,7 +20,7 @@ export async function obter(url: string, ts: string): Promise<string> {
   const ficheiro = join(CACHE, `${ts}-${url.replace(/[^a-z0-9]+/gi, "_")}.html`);
   if (existsSync(ficheiro)) return readFileSync(ficheiro, "utf8");
   const r = await fetch(urlArquivo(url, ts), {
-    headers: { "user-agent": "uxda-survival-prototype/0.1 (cartao 0.2)" },
+    headers: { "user-agent": "uxea-survival-prototype/0.1 (cartao 0.2)" },
   });
   if (!r.ok) throw new Error(`${r.status} em ${url}@${ts}`);
   const html = await r.text();

@@ -38,15 +38,15 @@ async function comSdk(
         }),
       }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
-  return { br, uxda };
+  return { br, uxea };
 }
 
 const doTipo = (evs: any[], t: string) => evs.filter((e) => e.event_type === t);
 
-async function despejar(br: any, uxda: any) {
-  await uxda.descarregar();
+async function despejar(br: any, uxea: any) {
+  await uxea.descarregar();
   await br.avancar(20000);
   return br.eventos();
 }
@@ -54,7 +54,7 @@ async function despejar(br: any, uxda: any) {
 /* ------------------------------------------------------------------- 4.1 */
 
 test("4.1 os três casos aparecem separados, e não num contador de toques falhados", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
 
   // Uma zona que parece acionável e não é. É o sinal que o documento chama dos
   // mais subvalorizados que existem.
@@ -68,7 +68,7 @@ test("4.1 os três casos aparecem separados, e não num contador de toques falha
   }
   await br.avancar(2000);
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   assert.equal(doTipo(evs, "toque_sem_alvo").length, 1, "o toque na zona morta");
   assert.equal(doTipo(evs, "toque_desativado").length, 1, "o toque no desativado");
   assert.equal(doTipo(evs, "toque_repetido").length, 1, "a rajada, num evento só");
@@ -90,15 +90,15 @@ test("4.1 e 9.1 as coordenadas precisam das duas condições, e não de uma", as
   // no cartão 9.5 deixava de mostrar e continuava a recolher.
   const so = await comSdk("detalhado", false);
   disparar(so.br.documento, "#zona-morta", "pointerdown", { clientX: 40, clientY: 300 });
-  const semRastreio = doTipo(await despejar(so.br, so.uxda), "toque_sem_alvo")[0]!;
+  const semRastreio = doTipo(await despejar(so.br, so.uxea), "toque_sem_alvo")[0]!;
   assert.equal(semRastreio.properties.toque_x, undefined,
     "sem rastreio individual não saem coordenadas, mesmo no detalhado");
   assert.ok(typeof semRastreio.properties.zona === "string",
     "a zona continua a sair: ela agrupa e não localiza ninguém");
 
-  const { br, uxda } = await comSdk("detalhado", true);
+  const { br, uxea } = await comSdk("detalhado", true);
   disparar(br.documento, "#zona-morta", "pointerdown", { clientX: 40, clientY: 300 });
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const semAlvo = doTipo(evs, "toque_sem_alvo")[0]!;
   assert.equal(typeof semAlvo.properties.toque_x, "number");
   assert.ok(semAlvo.properties.toque_x >= 0 && semAlvo.properties.toque_x <= 100,
@@ -114,9 +114,9 @@ test("9.1 um toque num elemento traz a caixa dele e o ponto dentro dela", async 
   // São duas perguntas diferentes sobre o mesmo toque: **onde no ecrã** (o mapa de
   // calor) e **onde no botão** (a área de toque mal desenhada). E a caixa é o que
   // permite desenhar o esquema do ecrã sem nunca o fotografar (cartão 9.2).
-  const { br, uxda } = await comSdk("detalhado", true);
+  const { br, uxea } = await comSdk("detalhado", true);
   disparar(br.documento, "#lento", "pointerdown", { clientX: 12, clientY: 8 });
-  const desativado = doTipo(await despejar(br, uxda), "toque_desativado")[0]!;
+  const desativado = doTipo(await despejar(br, uxea), "toque_desativado")[0]!;
   assert.ok(desativado, "o toque no botão desativado");
   assert.equal(typeof desativado.properties.alvo_x, "number", "o ponto dentro da caixa");
   assert.ok(desativado.properties.alvo_x >= 0 && desativado.properties.alvo_x <= 100);
@@ -131,10 +131,10 @@ test("9.1 um toque que funciona traz a posição, e não só os que falham", asy
   // normal sai do `click` da captura base. As coordenadas estavam a sair nos
   // toques mortos e não nos que funcionam, e o mapa de calor do cartão 9.2 ficava
   // a desenhar só as falhas, que é o oposto de um mapa de calor.
-  const { br, uxda } = await comSdk("detalhado", true);
+  const { br, uxea } = await comSdk("detalhado", true);
   disparar(br.documento, "#pagar", "pointerdown", { clientX: 80, clientY: 720 });
   disparar(br.documento, "#pagar", "click", { clientX: 80, clientY: 720 });
-  const toque = doTipo(await despejar(br, uxda), "toque")[0]!;
+  const toque = doTipo(await despejar(br, uxea), "toque")[0]!;
   assert.ok(toque, "o toque que funciona");
   assert.equal(typeof toque.properties.toque_x, "number", "sem coordenadas, não há mapa de calor");
   assert.equal(typeof toque.properties.alvo_caixa, "string", "sem caixa, não há esquema do ecrã");
@@ -145,18 +145,18 @@ test("9.1 um clique sem gesto não inventa uma posição", async () => {
   // Um `click` disparado por teclado ou por `element.click()` não tem coordenadas
   // nenhumas. **Devolver zeros seria pôr um toque no canto superior esquerdo**, e
   // o canto superior esquerdo é um sítio a sério do ecrã.
-  const { br, uxda } = await comSdk("detalhado", true);
+  const { br, uxea } = await comSdk("detalhado", true);
   disparar(br.documento, "#pagar", "click", {});
-  const toque = doTipo(await despejar(br, uxda), "toque")[0]!;
+  const toque = doTipo(await despejar(br, uxea), "toque")[0]!;
   assert.ok(toque, "o toque saiu na mesma: o que falta é a posição, e não o evento");
   assert.equal(toque.properties?.toque_x, undefined, "inventou uma posição que não houve");
 });
 
 test("9.1 sem rastreio individual, um toque que funciona não leva posição nenhuma", async () => {
-  const { br, uxda } = await comSdk("detalhado", false);
+  const { br, uxea } = await comSdk("detalhado", false);
   disparar(br.documento, "#pagar", "pointerdown", { clientX: 80, clientY: 720 });
   disparar(br.documento, "#pagar", "click", { clientX: 80, clientY: 720 });
-  const toque = doTipo(await despejar(br, uxda), "toque")[0]!;
+  const toque = doTipo(await despejar(br, uxea), "toque")[0]!;
   assert.equal(toque.properties?.toque_x, undefined,
     "desligar o rastreio individual tem de parar de recolher, e não só de mostrar");
 });
@@ -165,19 +165,19 @@ test("9.1 a ordem da interação conta-se por ecrã, e não por sessão", async 
   // É assim que duas visitas ao mesmo ecrã se comparam uma com a outra. Contada
   // por sessão, a segunda visita começava no número trinta e não se alinhava com
   // nada.
-  const { br, uxda } = await comSdk("detalhado", true);
+  const { br, uxea } = await comSdk("detalhado", true);
   disparar(br.documento, "#zona-morta", "pointerdown", { clientX: 10, clientY: 300 });
   disparar(br.documento, "#zona-morta", "pointerdown", { clientX: 20, clientY: 310 });
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const ordens = doTipo(evs, "toque_sem_alvo").map((e) => e.properties.ordem_na_sequencia);
   assert.deepEqual(ordens, [1, 2], "a sequência dentro do ecrã");
 });
 
 test("4.1 o tempo até à primeira interação conta-se por ecrã, e não por sessão", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   await br.avancar(1800);
   disparar(br.documento, "#pagar", "pointerdown", { clientX: 5, clientY: 5 });
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const primeira = doTipo(evs, "primeira_interacao");
   assert.equal(primeira.length, 1, "uma por ecrã, e não uma por toque");
   assert.ok(primeira[0]!.duration_ms >= 1800, `esperava 1800 ou mais, veio ${primeira[0]!.duration_ms}`);
@@ -189,7 +189,7 @@ test("4.2 colagem distingue-se de introdução manual", async () => {
   // Muda a interpretação de tudo o resto: um campo preenchido por colagem em dois
   // décimos de segundo não é fácil, é um campo cujo valor a pessoa foi buscar a
   // outro lado, e esse desvio é um custo que não aparece no tempo medido.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
 
   disparar(br.documento, "#nome", "focusin");
   await br.avancar(300);
@@ -201,7 +201,7 @@ test("4.2 colagem distingue-se de introdução manual", async () => {
   disparar(br.documento, "#cartao", "input", { inputType: "insertFromPaste" });
   disparar(br.documento, "#cartao", "focusout");
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const campos = doTipo(evs, "campo");
   assert.equal(campos.length, 2);
   assert.equal(campos[0]!.properties.origem, "manual");
@@ -209,7 +209,7 @@ test("4.2 colagem distingue-se de introdução manual", async () => {
 });
 
 test("4.2 regressos, ordem efetiva e ordem prevista", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
 
   // Preenche pela ordem errada, e volta ao primeiro campo.
   disparar(br.documento, "#validade", "focusin");
@@ -219,7 +219,7 @@ test("4.2 regressos, ordem efetiva e ordem prevista", async () => {
   disparar(br.documento, "#validade", "focusin");
   disparar(br.documento, "#validade", "focusout");
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const ultimoDoCampo = (n: number) =>
     doTipo(evs, "campo").filter((e) => e.properties.ordem_prevista === n).slice(-1)[0]!;
 
@@ -232,11 +232,11 @@ test("4.2 regressos, ordem efetiva e ordem prevista", async () => {
 });
 
 test("4.2 um campo visitado e deixado vazio não é um campo nunca visitado", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   disparar(br.documento, "#cartao", "focusin");
   await br.avancar(4000);
   disparar(br.documento, "#cartao", "focusout");
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const campo = doTipo(evs, "campo")[0]!;
   assert.equal(campo.properties.visitado_vazio, true);
   assert.equal(campo.properties.caracteres_escritos, 0);
@@ -244,7 +244,7 @@ test("4.2 um campo visitado e deixado vazio não é um campo nunca visitado", as
 });
 
 test("4.2 nenhum caractere escrito aparece no que sai", async () => {
-  const { br, uxda } = await comSdk("detalhado");
+  const { br, uxea } = await comSdk("detalhado");
   const marcadores = ["SEGREDOxNOME", "4111111111111111", "ana.silva@exemplo.ao"];
   for (const [i, id] of ["#nome", "#cartao", "#validade"].entries()) {
     const el = br.documento.querySelector(id);
@@ -253,7 +253,7 @@ test("4.2 nenhum caractere escrito aparece no que sai", async () => {
     disparar(br.documento, id, "input", { inputType: "insertText", data: marcadores[i] });
     disparar(br.documento, id, "focusout");
   }
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const bruto = JSON.stringify(evs);
   for (const m of marcadores) {
     assert.ok(!bruto.includes(m), `o marcador ${m} saiu do dispositivo`);
@@ -267,11 +267,11 @@ test("4.2 nenhum caractere escrito aparece no que sai", async () => {
 /* ------------------------------------------------------------------- 4.3 */
 
 test("4.3 erro por campo, com a chave da mensagem e as tentativas até resolver", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   disparar(br.documento, "#cartao", "focusin");
   disparar(br.documento, "#cartao", "invalid");
   disparar(br.documento, "#cartao", "invalid");
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const erros = doTipo(evs, "erro");
   assert.equal(erros.length, 2);
   assert.equal(erros[0]!.message_key, "validacao_nativa");
@@ -282,7 +282,7 @@ test("4.3 erro por campo, com a chave da mensagem e as tentativas até resolver"
 test("4.3 o campo de abandono é o campo onde ela estava, e não o passo", async () => {
   // O documento chama a isto a informação mais acionável do conjunto: não é o
   // passo que provoca abandono, é quase sempre um campo concreto dentro dele.
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   disparar(br.documento, "#nome", "focusin");
   disparar(br.documento, "#nome", "focusout");
   disparar(br.documento, "#cartao", "focusin");
@@ -291,7 +291,7 @@ test("4.3 o campo de abandono é o campo onde ela estava, e não o passo", async
   (br.documento as any).visibilityState = "hidden";
   disparar(br.documento, "body", "visibilitychange");
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const terminal = doTipo(evs, "terminal")[0]!;
   assert.ok(terminal, "uma tentativa deixada a meio tem de acabar em terminal");
   assert.equal(terminal.properties.estado, "abandonado");
@@ -300,7 +300,7 @@ test("4.3 o campo de abandono é o campo onde ela estava, e não o passo", async
 });
 
 test("4.3 o estado de cada campo na submissão, incluindo os que ninguém visitou", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   const nome = br.documento.querySelector("#nome");
   disparar(br.documento, "#nome", "focusin");
   nome.value = "Ana";
@@ -308,7 +308,7 @@ test("4.3 o estado de cada campo na submissão, incluindo os que ninguém visito
   disparar(br.documento, "#nome", "focusout");
   disparar(br.documento, "#f", "submit");
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const naSubmissao = doTipo(evs, "campo").filter((e) => e.properties.fase === "submissao");
   assert.equal(naSubmissao.length, 3, "um retrato por campo do formulário");
   assert.equal(naSubmissao[0]!.properties.estado_na_submissao, "preenchido");
@@ -322,12 +322,12 @@ test("4.3 o estado de cada campo na submissão, incluindo os que ninguém visito
 /* ------------------------------------------------------------------- 4.4 */
 
 test("4.4 cada transição de passo traz o passo anterior e o tempo que ele levou", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   await br.avancar(2500);
   br.janela.history.pushState({}, "", "/pagamento/confirmar");
   await br.avancar(10);
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const passos = doTipo(evs, "passo");
   assert.ok(passos.length >= 2, `esperava dois passos, vieram ${passos.length}`);
   const segundo = passos[1]!;
@@ -348,13 +348,13 @@ test("4.4 o tempo de espera do sistema não é tempo de decisão de ninguém", a
     await br.avancar(900);
     return { status: 200 };
   };
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   await br.janela.fetch("https://api.exemplo.ao/pedidos");
   await br.avancar(50);
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const espera = doTipo(evs, "espera")[0]!;
   assert.ok(espera, "a espera imposta pelo sistema tem de sair num evento próprio");
   assert.ok(espera.duration_ms >= 900, `esperava 900 ou mais, veio ${espera.duration_ms}`);
@@ -362,9 +362,9 @@ test("4.4 o tempo de espera do sistema não é tempo de decisão de ninguém", a
 
 test("4.4 o evento terminal é inequívoco, e são quatro estados", async () => {
   for (const estado of ["sucesso", "erro", "abandonado", "expirado"] as const) {
-    const { br, uxda } = await comSdk();
-    uxda.terminal(estado);
-    const evs = await despejar(br, uxda);
+    const { br, uxea } = await comSdk();
+    uxea.terminal(estado);
+    const evs = await despejar(br, uxea);
     const t = doTipo(evs, "terminal");
     assert.equal(t.length, 1, `${estado}: um terminal, e um só`);
     assert.equal(t[0]!.properties.estado, estado);
@@ -372,14 +372,14 @@ test("4.4 o evento terminal é inequívoco, e são quatro estados", async () => 
 });
 
 test("4.4 a duração de cada ausência para segundo plano é registada", async () => {
-  const { br, uxda } = await comSdk();
+  const { br, uxea } = await comSdk();
   (br.documento as any).visibilityState = "hidden";
   disparar(br.documento, "body", "visibilitychange");
   await br.avancar(7000);
   (br.documento as any).visibilityState = "visible";
   disparar(br.documento, "body", "visibilitychange");
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const regresso = doTipo(evs, "ambiente").find((e) => e.properties.mudanca === "primeiro_plano")!;
   assert.ok(regresso, "o regresso é que sabe quanto tempo durou a ausência");
   assert.ok(regresso.duration_ms >= 7000, `esperava 7000 ou mais, veio ${regresso.duration_ms}`);
@@ -404,7 +404,7 @@ test("9.1 o deslocamento sai uma vez por ecrã, com o máximo, e não a cada mov
   // É a decisão inteira do módulo: um `scroll` dispara dezenas de vezes por
   // segundo, e um evento por cada um multiplicava o volume por cem para dizer a
   // mesma coisa. O que interessa é até onde a pessoa **chegou**.
-  const { br, uxda } = await comSdk("detalhado", true);
+  const { br, uxea } = await comSdk("detalhado", true);
   const doc: any = br.documento;
   doc.documentElement.scrollHeight = 2400;
 
@@ -419,7 +419,7 @@ test("9.1 o deslocamento sai uma vez por ecrã, com o máximo, e não a cada mov
   br.janela.history.pushState({}, "", "/confirmacao");
   await br.avancar(50);
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const deslocamentos = doTipo(evs, "deslocamento");
   // **Um por ecrã**, e não um por movimento: foram dois ecrãs (o de chegada e o
   // que a navegação abriu), e por isso são dois eventos e não dezenas.
@@ -439,13 +439,13 @@ test("9.1 o ecrã de chegada também mede a profundidade", async () => {
   //
   // Este ensaio não navega para lado nenhum: é exatamente a forma de uma página
   // que se abre, se lê e se fecha.
-  const { br, uxda } = await comSdk("detalhado", true);
+  const { br, uxea } = await comSdk("detalhado", true);
   const doc: any = br.documento;
   doc.documentElement.scrollHeight = 2400;
   br.janela.scrollY = 800;
   br.janela.dispararJanela("scroll");
 
-  const evs = await despejar(br, uxda);
+  const evs = await despejar(br, uxea);
   const deslocamentos = doTipo(evs, "deslocamento");
   assert.equal(deslocamentos.length, 1, "a página de chegada mede como qualquer outra");
   assert.equal(deslocamentos[0]!.screen_key, "/pagamento");
@@ -454,12 +454,12 @@ test("9.1 o ecrã de chegada também mede a profundidade", async () => {
 });
 
 test("9.1 sem rastreio individual não sai profundidade nenhuma", async () => {
-  const { br, uxda } = await comSdk("detalhado", false);
+  const { br, uxea } = await comSdk("detalhado", false);
   const doc: any = br.documento;
   doc.documentElement.scrollHeight = 2400;
   br.janela.scrollY = 1600;
   br.janela.dispararJanela("scroll");
   br.janela.history.pushState({}, "", "/confirmacao");
   await br.avancar(50);
-  assert.equal(doTipo(await despejar(br, uxda), "deslocamento").length, 0);
+  assert.equal(doTipo(await despejar(br, uxea), "deslocamento").length, 0);
 });

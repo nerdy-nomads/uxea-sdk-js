@@ -223,18 +223,18 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
   let indice = 0;
   try {
     const estado = janela?.history?.state;
-    indice = typeof estado?.__uxda === "number" ? estado.__uxda : 0;
-    janela?.history?.replaceState?.({ ...(estado ?? {}), __uxda: indice }, "");
+    indice = typeof estado?.__uxea === "number" ? estado.__uxea : 0;
+    janela?.history?.replaceState?.({ ...(estado ?? {}), __uxea: indice }, "");
   } catch { /* histórico bloqueado: fica sem deteção de recuo */ }
   if (historico && originais["pushState"]) {
     const anterior = historico.pushState;
     historico.pushState = (estado: any, ...resto: any[]) => {
       indice++;
-      return anterior({ ...(estado ?? {}), __uxda: indice }, ...resto);
+      return anterior({ ...(estado ?? {}), __uxea: indice }, ...resto);
     };
   }
   ouvir(janela, "popstate", (e: any) => {
-    const novo = typeof e?.state?.__uxda === "number" ? e.state.__uxda : indice - 1;
+    const novo = typeof e?.state?.__uxea === "number" ? e.state.__uxea : indice - 1;
     const paraTras = novo < indice;
     indice = novo;
     verEcra(paraTras ? "recuo" : "navegacao");

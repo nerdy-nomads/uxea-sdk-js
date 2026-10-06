@@ -1,5 +1,5 @@
 /**
- * O mesmo corpo de provas que o `uxda-core` corre em Go.
+ * O mesmo corpo de provas que o `uxea-core` corre em Go.
  *
  * Se os dois validadores derem veredictos diferentes sobre o mesmo evento, um dos
  * dois está errado, e o integrador vai perder dados sem perceber porquê. É este

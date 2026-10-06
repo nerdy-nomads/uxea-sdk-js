@@ -2,7 +2,7 @@
  * Monta a página de ensaio: o DOM real de uma aplicação, com o pacote do SDK
  * injetado, para se ver a captura a correr num browser a sério.
  *
- * Correr: bun build src/browser.ts --target=browser --format=iife --outfile=/tmp/uxda-browser.js
+ * Correr: bun build src/browser.ts --target=browser --format=iife --outfile=/tmp/uxea-browser.js
  *         node --experimental-strip-types tools/survival/demo.ts <ficheiro-do-cache> <base-href>
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -14,7 +14,7 @@ const [, , ficheiro, base] = process.argv;
 if (!ficheiro || !base) throw new Error("uso: demo.ts <ficheiro-do-cache> <base-href>");
 
 const html = readFileSync(join(AQUI, "cache", ficheiro), "utf8");
-const pacote = readFileSync("/tmp/uxda-browser.js", "utf8");
+const pacote = readFileSync("/tmp/uxea-browser.js", "utf8");
 
 // O `base` faz os recursos relativos do instantâneo carregarem do sítio real,
 // para a página aparecer como aparecia, e não como texto sem estilo.

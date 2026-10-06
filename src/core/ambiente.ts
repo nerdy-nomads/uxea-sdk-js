@@ -26,7 +26,7 @@ export function armazenamentoDoBrowser(janela: any): Armazenamento {
   try {
     const l = janela?.localStorage;
     if (!l) return armazenamentoDeMemoria();
-    const sonda = "uxda.sonda";
+    const sonda = "uxea.sonda";
     l.setItem(sonda, "1");
     l.removeItem(sonda);
     return l as Armazenamento;
@@ -53,7 +53,7 @@ export function envioDoBrowser(janela: any) {
       // O `sendBeacon` não deixa pôr cabeçalhos: a chave vai no URL, que é a
       // única forma de a ingestão a ver num pedido de despedida.
       const separador = url.includes("?") ? "&" : "?";
-      const ok = nav.sendBeacon(url + separador + "chave=" + encodeURIComponent(cabecalhos["X-UXDA-Key"] ?? ""),
+      const ok = nav.sendBeacon(url + separador + "chave=" + encodeURIComponent(cabecalhos["X-UXEA-Key"] ?? ""),
         new Blob([corpo], { type: "application/json" }));
       return { estado: ok ? 202 : 0, corpo: "" };
     }

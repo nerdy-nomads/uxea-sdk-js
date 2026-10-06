@@ -9,7 +9,7 @@
  * da aplicação anfitriã, e o último é pior do que ruído: é medir **como** alguém
  * escreveu uma opinião sobre a própria aplicação.
  *
- * A marca é um atributo no hospedeiro, `data-uxda-ignorar`, e a pergunta é
+ * A marca é um atributo no hospedeiro, `data-uxea-ignorar`, e a pergunta é
  * "este elemento, ou algum acima dele, tem a marca?".
  *
  * # Porque é que chega olhar para o alvo do evento
@@ -25,7 +25,7 @@
  * mutações apanhe num browser que as deixe atravessar), sobe-se pela raiz até ao
  * hospedeiro, e a resposta é a mesma.
  */
-export const ATRIBUTO_FORA = "data-uxda-ignorar";
+export const ATRIBUTO_FORA = "data-uxea-ignorar";
 const SELETOR = `[${ATRIBUTO_FORA}]`;
 
 export function foraDaCaptura(el: any): boolean {

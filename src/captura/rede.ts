@@ -147,17 +147,17 @@ export function ligarRede(
     const abrirOriginal = XHR.prototype.open;
     const enviarOriginal = XHR.prototype.send;
     XHR.prototype.open = function (this: any, metodo: string, url: string, ...resto: any[]) {
-      try { this.__uxdaUrl = String(url); } catch { /* nada */ }
+      try { this.__uxeaUrl = String(url); } catch { /* nada */ }
       return abrirOriginal.call(this, metodo, url, ...resto);
     };
     XHR.prototype.send = function (this: any, ...args: any[]) {
       try {
-        this.addEventListener("error", () => anotar(this.__uxdaUrl ?? "", 0));
+        this.addEventListener("error", () => anotar(this.__uxeaUrl ?? "", 0));
         // O `timeout` do XHR é o único sítio onde o browser diz, com todas as
         // letras, que a espera acabou sem resposta.
-        this.addEventListener("timeout", () => anotar(this.__uxdaUrl ?? "", 0, true));
+        this.addEventListener("timeout", () => anotar(this.__uxeaUrl ?? "", 0, true));
         this.addEventListener("load", () => {
-          if (this.status >= 400) anotar(this.__uxdaUrl ?? "", this.status);
+          if (this.status >= 400) anotar(this.__uxeaUrl ?? "", this.status);
         });
       } catch { /* nada */ }
       return enviarOriginal.apply(this, args as any);

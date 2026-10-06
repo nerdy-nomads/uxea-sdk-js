@@ -52,7 +52,7 @@ offline.**
 Nos pares reais, **91,1%** no `gov.uk` e **90,9%** no `stackoverflow` entre os
 elementos que ainda existem.
 
-Números, interpretação e o que eles mudaram na decisão: [ADR 0003](https://github.com/nerdy-nomads/ux-data-analysis/blob/master/docs/adr/0003-identificacao-estavel-de-elementos.md).
+Números, interpretação e o que eles mudaram na decisão: [ADR 0003](https://github.com/nerdy-nomads/ux-event-analytics/blob/master/docs/adr/0003-identificacao-estavel-de-elementos.md).
 
 `resultado.json` guarda a última execução. `ensaio-gov-uk.png` é a captura da
 execução num browser real, com uma moldura por elemento observado, colorida pelo

@@ -57,11 +57,11 @@ test("2.5 o mesmo identificador dá sempre o mesmo pseudónimo", async () => {
 
 test("2.5 identificar liga o anónimo ao pseudónimo, e pede a ligação retroativa", async () => {
   const br = criarBrowser();
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
-  const anonimo = uxda.diagnostico().identidade.anonimo;
+  const anonimo = uxea.diagnostico().identidade.anonimo;
 
-  await uxda.identificar("ana@exemplo.ao");
+  await uxea.identificar("ana@exemplo.ao");
   await br.avancar(30000);
 
   const ligacao = br.pedidos.find((p) => p.url.includes("/v1/identidade/ligar"));
@@ -71,7 +71,7 @@ test("2.5 identificar liga o anónimo ao pseudónimo, e pede a ligação retroat
   assert.ok(String(corpo.user_id).startsWith("px_"), "mandou o email para o servidor");
 
   // E daqui em diante os eventos levam o pseudónimo.
-  uxda.ecra("/conta");
+  uxea.ecra("/conta");
   await br.avancar(30000);
   const ev = br.eventos().find((e) => e.screen_key === "/conta")!;
   assert.ok(ev, "o ecrã declarado não saiu");
@@ -84,11 +84,11 @@ test("2.5 identificar liga o anónimo ao pseudónimo, e pede a ligação retroat
 
 test("2.5 esquecer volta a pôr os eventos anónimos", async () => {
   const br = criarBrowser();
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
+  const uxea = iniciar({ chave: "uxea_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
-  await uxda.identificar("cliente-1");
-  uxda.esquecer();
-  uxda.ecra("/saida");
+  await uxea.identificar("cliente-1");
+  uxea.esquecer();
+  uxea.ecra("/saida");
   await br.avancar(30000);
   const ev = br.eventos().find((e) => e.screen_key === "/saida")!;
   assert.equal(ev.user_id, undefined);
