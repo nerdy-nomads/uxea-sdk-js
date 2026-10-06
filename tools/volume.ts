@@ -34,7 +34,7 @@ async function tarefa(nivel: Nivel) {
   br.responder((p: any) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, captura: [], versao: 1 } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_volume", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_volume", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(20);
 
   // Chega ao ecrã e olha para ele.

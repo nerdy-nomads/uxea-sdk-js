@@ -72,7 +72,7 @@ async function tudoOQueSai(nivel: "essencial" | "padrao" | "detalhado"): Promise
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, captura: [], versao: 1 } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   // Uma pessoa a preencher o formulário: escreve, apaga, cola, volta atrás.
@@ -187,7 +187,7 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ sucesso: true, dados: { amostragem: 1, nivel: "padrao", exposicao: { propriedades: ["segmento"] } } }) }
     : { estado: 202, corpo: JSON.stringify({ sucesso: true, dados: { aceites: 1 } }) });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   const el = br.documento.querySelector("#bi")! as any;
@@ -208,7 +208,7 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
 
   // E sem ela, o mesmo caminho não deixa passar nada.
   const br2 = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda2 = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br2.ambiente() });
+  const uxda2 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br2.ambiente() });
   await br2.avancar(10);
   (br2.documento.querySelector("#bi") as any).value = "Ana Maria da Silva";
   uxda2.track("depuracao", { properties: { segmento: "empresas" } });
@@ -218,7 +218,7 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
     "sem a fuga introduzida, nada devia sair");
   // E o mesmo valor do campo, na mesma propriedade, sem a exposição: sai mascarado.
   const br4 = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda4 = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br4.ambiente() });
+  const uxda4 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br4.ambiente() });
   await br4.avancar(10);
   uxda4.track("depuracao", { properties: { segmento: "Ana Maria da Silva" } });
   await uxda4.descarregar();
@@ -231,7 +231,7 @@ test("5.4 a bateria falha quando se introduz uma fuga, e passa depois de a remov
   // que um valor de propriedade é texto curto sem dígitos longos, e agora os dois
   // validadores impõem-no.
   const br3 = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda3 = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br3.ambiente() });
+  const uxda3 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br3.ambiente() });
   await br3.avancar(10);
   uxda3.track("depuracao", { properties: { segmento: "005123456LA041" } });
   await uxda3.descarregar();
@@ -251,7 +251,7 @@ test("5.4 em volume: quinhentas mensagens com conteúdo interpolado, e nada esca
   // e com valores diferentes em cada uma, provam que não há um recanto do
   // mascaramento que só falhe para uma forma de escrever o montante.
   const br = criarBrowser(PAGINA, { caminho: "/checkout" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const avisos = br.documento.querySelector("#avisos")!;
 

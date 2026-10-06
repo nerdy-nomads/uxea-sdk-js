@@ -39,7 +39,7 @@ linha("tamanho do pacote (gzip)", `${(comprimido / 1024).toFixed(1)} KB`, "300 K
 
 const N = 2000;
 const br = criarBrowser(`<button id="b">ok</button><form id="f"><input id="i"></form>`, { caminho: "/orcamento" });
-const uxda = iniciar({ chave: "uxda_des_orcamento", servidor: "http://ingest.local", ambiente: br.ambiente() });
+const uxda = iniciar({ chave: "uxda_des_orcamento", servidor: "https://ingest.local", ambiente: br.ambiente() });
 await br.avancar(10);
 
 const t0 = Number(process.hrtime.bigint()) / 1e6;

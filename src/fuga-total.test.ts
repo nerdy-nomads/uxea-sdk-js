@@ -66,7 +66,7 @@ test("18.2 em volume: mil pessoas com dados diferentes em todos os caminhos, e n
   const N = Number(process.env.UXDA_FUGA_N ?? 1000);
   const br = criarBrowser(PAGINA, { caminho: "/inicio" });
   br.janela.fetch = async () => ({ status: 500, ok: false }); // rápido: a espera não é o que aqui se mede
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const segredosDaCorrida: string[] = [];
   for (let i = 0; i < N; i++) {

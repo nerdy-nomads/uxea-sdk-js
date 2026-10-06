@@ -57,7 +57,7 @@ test("2.5 o mesmo identificador dá sempre o mesmo pseudónimo", async () => {
 
 test("2.5 identificar liga o anónimo ao pseudónimo, e pede a ligação retroativa", async () => {
   const br = criarBrowser();
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const anonimo = uxda.diagnostico().identidade.anonimo;
 
@@ -84,7 +84,7 @@ test("2.5 identificar liga o anónimo ao pseudónimo, e pede a ligação retroat
 
 test("2.5 esquecer volta a pôr os eventos anónimos", async () => {
   const br = criarBrowser();
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   await uxda.identificar("cliente-1");
   uxda.esquecer();

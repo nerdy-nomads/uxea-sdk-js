@@ -27,7 +27,7 @@ async function comSdk(html = PAGINA, config: Record<string, unknown> = {}) {
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel: "padrao", captura: [], versao: 1, ...config } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   return { br, uxda };
 }
@@ -232,7 +232,7 @@ test("5.3 os erros técnicos saem distinguidos, e nenhum deles esteve no ecrã",
   };
   // O SDK embrulha o `fetch` que estiver posto no momento em que liga, e por isso
   // religa-se a captura de rede sobre este.
-  const uxda2 = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda2 = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   await janela.fetch("https://api.exemplo.ao/pagamentos/8412").catch(() => {});

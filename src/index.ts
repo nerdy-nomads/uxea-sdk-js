@@ -25,7 +25,7 @@ import { ligarRede } from "./captura/rede.ts";
 import { capturaTipo, obter as obterConfig } from "./config/remoto.ts";
 import { validar } from "./event/validar.ts";
 import { ligarInqueritos, type ResumoDeInqueritos } from "./inquerito/index.ts";
-import { apagarOQueGuardamos, CHAVE_RECUSA, propriedadesDoCliente, textoDoCliente } from "./privacidade.ts";
+import { apagarOQueGuardamos, CHAVE_RECUSA, propriedadesDoCliente, textoDoCliente, transporteDe } from "./privacidade.ts";
 import { chao } from "./identity/mask.ts";
 
 export const SERVIDOR_POR_OMISSAO = "https://ingest.uxda.io";
@@ -55,6 +55,11 @@ export interface Diagnostico {
   consentimento: "implicito" | "pendente" | "dado" | "recusado";
   /** Os nomes das propriedades que a instituição passou e o esquema não conhece, e que por isso não saíram. */
   propriedadesDescartadas: string[];
+  /**
+   * Como os eventos viajam (cartão 18.6): `cifrado` (HTTPS), `local` (HTTP para a
+   * própria máquina, em ensaio) ou `recusado` (HTTP para fora: o SDK não arrancou).
+   */
+  transporte: "cifrado" | "local" | "recusado";
 }
 
 export interface Uxda {
@@ -465,12 +470,13 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
       inqueritos: inqueritos.resumo(),
       consentimento: consentimento(),
       propriedadesDescartadas: [...descartadas],
+      transporte: transporteDe(servidor),
     }), {
       versao: VERSAO, ambiente: ambienteNome, amostrado: false, configuracao: CONFIGURACAO_SEGURA,
       origemDaConfiguracao: "erro", identidade: ident, fila: fila.estado(), eventosEmitidos: 0,
       eventosRecusados: 0, msNoFioPrincipal: 0, foraDoFioPrincipal: false, errosInternos: 0,
       inqueritos: { regras: 0, ultimoGatilho: "", ultimoMotivo: "erro", aVista: false, respostasEnviadas: 0 },
-      consentimento: consentimento(), propriedadesDescartadas: [],
+      consentimento: consentimento(), propriedadesDescartadas: [], transporte: transporteDe(servidor),
     }),
     // O consentimento decide-se na fachada, por cima desta instância (ver `iniciar`).
     // Aqui só se faz a metade que precisa de chegar à fila: esvaziá-la sem enviar.
@@ -490,7 +496,7 @@ function diagnosticoInerte(op: Opcoes, consentimento: Diagnostico["consentimento
     fila: { pendentes: 0, enviados: 0, bytes: 0, falhas: 0, perdidos: 0, ultimoErro: "", proximaTentativaEm: 0 } as ReturnType<Fila["estado"]>,
     eventosEmitidos: 0, eventosRecusados: 0, msNoFioPrincipal: 0, foraDoFioPrincipal: false, errosInternos: errosInternos().length,
     inqueritos: { regras: 0, ultimoGatilho: "", ultimoMotivo: "sem_consentimento", aVista: false, respostasEnviadas: 0 },
-    consentimento, propriedadesDescartadas: [],
+    consentimento, propriedadesDescartadas: [], transporte: transporteDe(op.servidor ?? SERVIDOR_POR_OMISSAO),
   };
 }
 
@@ -516,10 +522,13 @@ function recusaGuardada(op: Opcoes): boolean {
  */
 export function iniciar(op: Opcoes): Uxda {
   const exigido = op.consentimento === "exigido";
+  // Um endereço em claro para fora da máquina não arranca nada, com ou sem
+  // consentimento (cartão 18.6).
+  const emClaro = transporteDe(op.servidor ?? SERVIDOR_POR_OMISSAO) === "recusado";
   let estado: Diagnostico["consentimento"] = recusaGuardada(op) ? "recusado" : exigido ? "pendente" : "implicito";
   let dentro: Uxda | null = null;
   const ler = () => estado;
-  const arrancar = () => { if (!dentro) dentro = iniciarCaptura(op, ler); };
+  const arrancar = () => { if (!dentro && !emClaro) dentro = iniciarCaptura(op, ler); };
   if (estado === "implicito") arrancar();
 
   const lojaCrua = () => {

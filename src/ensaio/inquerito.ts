@@ -17,7 +17,7 @@ import { criarBrowser, type Browser, type Pedido } from "./duplo.ts";
 import { iniciar, type Uxda } from "../index.ts";
 import type { Resposta } from "../core/tipos.ts";
 
-export const SERVIDOR = "http://ingest.local";
+export const SERVIDOR = "https://ingest.local";
 
 /** Uma regra com a forma do exemplo do contrato, que cada ensaio altera. */
 export function regra(extra: Record<string, unknown> = {}): Record<string, unknown> {

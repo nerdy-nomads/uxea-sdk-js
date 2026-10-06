@@ -38,7 +38,7 @@ async function comSdk(
         }),
       }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   return { br, uxda };
 }
@@ -348,7 +348,7 @@ test("4.4 o tempo de espera do sistema não é tempo de decisão de ninguém", a
     await br.avancar(900);
     return { status: 200 };
   };
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   await br.janela.fetch("https://api.exemplo.ao/pedidos");

@@ -66,7 +66,7 @@ export async function corrida(nivel: "essencial" | "padrao" | "detalhado", confi
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, versao: 1, amostragem_detalhado: 1, rastreio_individual: true, ...configExtra } }) }
     : { estado: 202, corpo: "{}" });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   const tocar = (seletor: string, x: number, y: number) => {

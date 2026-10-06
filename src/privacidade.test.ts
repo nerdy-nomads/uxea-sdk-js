@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { criarBrowser, disparar, memoria } from "./ensaio/duplo.ts";
 import { iniciar } from "./index.ts";
-import { propriedadesDoCliente } from "./privacidade.ts";
+import { propriedadesDoCliente, transporteDe } from "./privacidade.ts";
 
 // Um formulário de pagamento, e um campo **acrescentado depois**, por quem nunca leu
 // a documentação do SDK: sem `data-testid`, sem declaração, sem nada.
@@ -41,7 +41,7 @@ function comConfig(br: ReturnType<typeof criarBrowser>, config: Record<string, u
 test("18.1 um campo novo, que ninguém declarou, nasce mascarado: mede-se o comportamento e nada do que se escreveu", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/pagamento" });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   escrever(br, "#nif_novo", NIF);
   escrever(br, "#nome", NOME);
@@ -62,7 +62,7 @@ test("18.1 um campo novo, que ninguém declarou, nasce mascarado: mede-se o comp
 test("18.1 uma propriedade que o esquema não conhece não sai, e um valor de texto sai mascarado", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/pagamento" });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   // Um programador da instituição, daqui a um ano, a depurar.
   uxda.track("comprovativo", { nota_interna: NOME, segmento: "Cliente José Manuel Ferreira", valor_monetario: 12400 });
@@ -83,7 +83,7 @@ test("18.1 uma propriedade que o esquema não conhece não sai, e um valor de te
 test("18.1 só a lista de permissões da instituição levanta a máscara, e nunca o chão", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/pagamento" });
   comConfig(br, { exposicao: { propriedades: ["segmento"], mensagens: [] } });
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   uxda.track("um", { segmento: "Empresas Grandes" });
   uxda.track("dois", { segmento: "conta 500123456" });
@@ -102,7 +102,7 @@ test("18.1 com o consentimento exigido e por dar, o SDK não toca no dispositivo
   const espia = { ...loja, setItem: (k: string, v: string) => { escritas.push(k); loja.setItem(k, v); } };
   const br = criarBrowser(PAGINA, { caminho: "/pagamento", loja: espia as any });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", consentimento: "exigido", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", consentimento: "exigido", ambiente: br.ambiente() });
   await br.avancar(10);
   escrever(br, "#nome", NOME);
   disparar(br.documento, "#pagar", "click");
@@ -142,7 +142,7 @@ test("18.1 com o consentimento exigido e por dar, o SDK não toca no dispositivo
   // E a página seguinte, mesmo sem exigir, não começa a medir antes de a aplicação voltar a dizer.
   const br2 = criarBrowser(PAGINA, { caminho: "/pagamento", loja });
   comConfig(br2, {});
-  const outra = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br2.ambiente() });
+  const outra = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br2.ambiente() });
   await br2.avancar(10);
   disparar(br2.documento, "#pagar", "click");
   await outra.descarregar();
@@ -163,7 +163,7 @@ test("18.1 o filtro das propriedades, em unidade", () => {
 test("18.1 o chão vale também nos nomes que a aplicação dá: ecrã, passo, evento e mensagem", async () => {
   const br = criarBrowser(PAGINA, { caminho: "/conta/jose.ferreira@exemplo.ao/movimentos" });
   comConfig(br, {});
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   uxda.ecra(`detalhe_${NIF}`);
   uxda.passo(`confirmar_${CORREIO}`);
@@ -176,4 +176,36 @@ test("18.1 o chão vale também nos nomes que a aplicação dá: ecrã, passo, e
   for (const c of [NIF, CORREIO, "AO06000600000100037131174", "jose.ferreira"]) assert.ok(!saiu.includes(c), `saiu: ${c}`);
   assert.ok(br.eventos().some((e) => e.screen_key === "Pagamento Cartão"), "um nome de ecrã normal foi estragado");
   assert.ok(br.eventos().some((e) => String(e.screen_key).startsWith("/conta/{id}")), "o correio no caminho não foi mascarado");
+});
+
+test("18.6 o SDK só fala cifrado, e HTTP só para a própria máquina", async () => {
+  assert.equal(transporteDe("https://ingest.uxda.io"), "cifrado");
+  assert.equal(transporteDe("http://localhost:8710"), "local");
+  assert.equal(transporteDe("http://127.0.0.1:8710"), "local");
+  assert.equal(transporteDe("http://10.0.2.2:8710"), "local");
+  assert.equal(transporteDe("http://[::1]:8710"), "local");
+  assert.equal(transporteDe("http://ingest.uxda.io"), "recusado");
+  assert.equal(transporteDe("http://192.168.0.180:8710"), "recusado");
+  assert.equal(transporteDe("ftp://ingest.uxda.io"), "recusado");
+  assert.equal(transporteDe("isto não é um endereço"), "recusado");
+
+  // De ponta a ponta: com um endereço em claro, nem com consentimento sai um pedido,
+  // nem se escreve no dispositivo.
+  const loja = memoria();
+  const escritas: string[] = [];
+  const espia = { ...loja, setItem: (k: string, v: string) => { escritas.push(k); loja.setItem(k, v); } };
+  const br = criarBrowser("<button id='b'>Pagar</button>", { loja: espia as any });
+  const sdk = iniciar({ chave: "uxda_tes_x", servidor: "http://ingest.exemplo.ao", ambiente: br.ambiente() });
+  sdk.consentimento(true);
+  disparar(br.documento, "#b", "click");
+  sdk.track("compra");
+  await br.avancar(10_000);
+  await sdk.descarregar();
+  assert.equal(br.pedidos.length, 0, "saiu um pedido em claro");
+  assert.equal(sdk.diagnostico().transporte, "recusado");
+  assert.deepEqual(escritas, [], "o SDK escreveu no dispositivo sem poder enviar");
+
+  const bom = iniciar({ chave: "uxda_tes_x", servidor: "https://ingest.exemplo.ao", ambiente: criarBrowser().ambiente() });
+  assert.equal(bom.diagnostico().transporte, "cifrado");
+  bom.parar();
 });

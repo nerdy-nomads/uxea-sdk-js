@@ -20,7 +20,7 @@ test("2.6 a configuração vem do servidor e fica em cache", async () => {
   br.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ sucesso: true, dados: CONFIG }) }
     : { estado: 202, corpo: "{}" });
-  const r = await obter(br.ambiente(), "http://ingest.local", "uxda_des_t");
+  const r = await obter(br.ambiente(), "https://ingest.local", "uxda_des_t");
   assert.equal(r.origem, "servidor");
   assert.equal(r.config.amostragem, 0.5);
   assert.deepEqual(daCache(br.loja, br.agora()), r.config);
@@ -30,17 +30,17 @@ test("2.6 sem resposta, usa-se a cache; sem cache, mede-se tudo", async () => {
   const loja = memoria();
   const br1 = criarBrowser("<p></p>", { loja });
   br1.responder(() => ({ estado: 200, corpo: JSON.stringify({ dados: CONFIG }) }));
-  await obter(br1.ambiente(), "http://ingest.local", "uxda_des_t");
+  await obter(br1.ambiente(), "https://ingest.local", "uxda_des_t");
 
   const br2 = criarBrowser("<p></p>", { loja });
   br2.responder(() => { throw new Error("sem rede"); });
-  const comCache = await obter(br2.ambiente(), "http://ingest.local", "uxda_des_t");
+  const comCache = await obter(br2.ambiente(), "https://ingest.local", "uxda_des_t");
   assert.equal(comCache.origem, "cache");
   assert.equal(comCache.config.versao, 7);
 
   const br3 = criarBrowser();
   br3.responder(() => ({ estado: 500, corpo: "" }));
-  const semNada = await obter(br3.ambiente(), "http://ingest.local", "uxda_des_t");
+  const semNada = await obter(br3.ambiente(), "https://ingest.local", "uxda_des_t");
   assert.equal(semNada.origem, "omissao");
   assert.deepEqual(semNada.config, CONFIGURACAO_SEGURA);
   assert.equal(semNada.config.amostragem, 1, "por omissão mede-se tudo");
@@ -80,7 +80,7 @@ test("2.6 baixar a amostragem faz efeito na sessão seguinte, sem publicar nada"
   antes.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel: "padrao", captura: [], versao: 1 } }) }
     : { estado: 202, corpo: "{}" });
-  const s1 = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: antes.ambiente() });
+  const s1 = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: antes.ambiente() });
   await antes.avancar(10);
   disparar(antes.documento, "#b", "click");
   await antes.avancar(30000);
@@ -92,7 +92,7 @@ test("2.6 baixar a amostragem faz efeito na sessão seguinte, sem publicar nada"
   depois.responder((p) => p.url.includes("/v1/config")
     ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 0, nivel: "padrao", captura: [], versao: 2 } }) }
     : { estado: 202, corpo: "{}" });
-  const s2 = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: depois.ambiente() });
+  const s2 = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: depois.ambiente() });
   await depois.avancar(10);
   disparar(depois.documento, "#b", "click");
   await depois.avancar(30000);
@@ -277,11 +277,11 @@ test("2.6 a cache é a resposta anterior inteira, e não só a amostragem e o n�
   };
   const br1 = criarBrowser("<p></p>", { loja });
   br1.responder(() => ({ estado: 200, corpo: JSON.stringify({ sucesso: true, dados }) }));
-  const doServidor = await obter(br1.ambiente(), "http://ingest.local", "uxda_des_t");
+  const doServidor = await obter(br1.ambiente(), "https://ingest.local", "uxda_des_t");
 
   const br2 = criarBrowser("<p></p>", { loja });
   br2.responder(() => { throw new Error("sem rede"); });
-  const daCacheAgora = await obter(br2.ambiente(), "http://ingest.local", "uxda_des_t");
+  const daCacheAgora = await obter(br2.ambiente(), "https://ingest.local", "uxda_des_t");
   assert.equal(daCacheAgora.origem, "cache");
   assert.deepEqual(daCacheAgora.config, doServidor.config);
   assert.equal(daCacheAgora.config.amostragemDetalhado, 0.25);

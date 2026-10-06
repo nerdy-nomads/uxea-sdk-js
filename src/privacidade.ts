@@ -98,3 +98,22 @@ export function apagarOQueGuardamos(loja: { length?: number; key?(i: number): st
   }
   return chaves.length;
 }
+
+/**
+ * Como os eventos vão viajar até ao servidor (cartão 18.6, `RNF-PRI-09`, ADR 0050).
+ *
+ * `https` é cifrado. HTTP só se aceita para a própria máquina (`localhost`, o
+ * anfitrião visto do emulador Android, `10.0.2.2`), que é o ensaio local. Qualquer
+ * outro endereço em claro é **recusado**, e o SDK não arranca: um endereço mal
+ * escrito no `data-servidor` não pode pôr o comportamento de ninguém a circular em
+ * claro.
+ */
+export function transporteDe(servidor: string): "cifrado" | "local" | "recusado" {
+  let u: URL;
+  try { u = new URL(servidor); } catch { return "recusado"; }
+  if (u.protocol === "https:") return "cifrado";
+  if (u.protocol !== "http:") return "recusado";
+  const h = u.hostname.replace(/^\[|\]$/g, "");
+  return h === "localhost" || h.endsWith(".localhost") || h === "127.0.0.1" || h === "::1" || h === "10.0.2.2"
+    ? "local" : "recusado";
+}

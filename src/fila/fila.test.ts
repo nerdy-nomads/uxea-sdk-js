@@ -71,7 +71,7 @@ test("2.4 dez minutos sem rede não perdem um evento, e a anfitriã não dá por
   const br = criarBrowser(`<button id="b">ok</button>`, { caminho: "/tarefa", loja });
   // A rede está em baixo: estado 0 é o que um `fetch` falhado dá.
   br.responder(() => ({ estado: 0, corpo: "" }));
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
 
   // Dez minutos de uso: um clique de trinta em trinta segundos.
@@ -103,7 +103,7 @@ test("2.4 dez minutos sem rede não perdem um evento, e a anfitriã não dá por
 test("2.4 uma recusa definitiva não fica a repetir para sempre", async () => {
   const br = criarBrowser(`<button id="b">ok</button>`);
   br.responder(() => ({ estado: 401, corpo: '{"erro":"chave inválida"}' }));
-  const uxda = iniciar({ chave: "uxda_des_errada", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_errada", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(60000);
   const d = uxda.diagnostico();
   assert.equal(d.fila.pendentes, 0, "uma chave errada não pode encher a fila do cliente");
@@ -113,7 +113,7 @@ test("2.4 uma recusa definitiva não fica a repetir para sempre", async () => {
 test("2.4 o servidor em baixo não faz a aplicação anfitriã falhar", async () => {
   const br = criarBrowser(`<button id="b">ok</button>`);
   br.responder(() => { throw new Error("ligação recusada"); });
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   disparar(br.documento, "#b", "click");
   await br.avancar(120000);

@@ -98,7 +98,7 @@ for (const avaria of AVARIAS) {
     // Tudo o que se segue é a aplicação anfitriã a viver a vida dela.
     let anfitriaViva = true;
     try {
-      const uxda = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+      const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
       await br.avancar(10);
       disparar(br.documento, "#b", "click");
       disparar(br.documento, "#i", "focusin");
@@ -126,7 +126,7 @@ test("2.7 o `fetch` da anfitriã continua a devolver o que devolvia", async () =
   const br = criarBrowser(`<p>x</p>`);
   const respostaOriginal = { status: 200, texto: "conteúdo do cliente" };
   br.janela.fetch = async () => respostaOriginal;
-  iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const r = await br.janela.fetch("/api/pedidos");
   assert.equal(r, respostaOriginal, "o SDK trocou a resposta da aplicação");
@@ -136,14 +136,14 @@ test("2.7 um erro do `fetch` da anfitriã chega à anfitriã tal e qual", async 
   const br = criarBrowser(`<p>x</p>`);
   const erroOriginal = new Error("500 do backend do cliente");
   br.janela.fetch = async () => { throw erroOriginal; };
-  iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   await assert.rejects(() => br.janela.fetch("/api/x"), (e: unknown) => e === erroOriginal);
 });
 
 test("2.7 argumentos absurdos na API pública não passam disso", async () => {
   const br = criarBrowser(`<p>x</p>`);
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   const circular: any = {}; circular.eu = circular;
   uxda.track(circular);
@@ -165,7 +165,7 @@ test("2.7 o registo interno guarda o que aconteceu, e não cresce sem limite", a
   const br = criarBrowser(`<button id="b">ok</button>`);
   const el = br.documento.querySelector("#b");
   Object.defineProperty(el, "tagName", { get() { throw new Error("partido"); } });
-  const uxda = iniciar({ chave: "uxda_des_t", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_t", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   for (let i = 0; i < 200; i++) disparar(br.documento, "#b", "click");
   await br.avancar(60000);

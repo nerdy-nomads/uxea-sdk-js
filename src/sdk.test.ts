@@ -27,7 +27,7 @@ async function comSdk(html = PAGINA, nivel: "essencial" | "padrao" | "detalhado"
       ? { estado: 200, corpo: JSON.stringify({ dados: { amostragem: 1, nivel, captura: [], versao: 1 } }) }
       : { estado: 202, corpo: "{}" });
   }
-  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "http://ingest.local", ambiente: br.ambiente() });
+  const uxda = iniciar({ chave: "uxda_des_teste", servidor: "https://ingest.local", ambiente: br.ambiente() });
   await br.avancar(10);
   return { br, uxda };
 }
