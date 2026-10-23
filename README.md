@@ -303,6 +303,17 @@ apareceu com o tema da consola (verde institucional, Georgia, cantos de 20 px), 
 resposta de esforço chegou à tabela com o comentário `o cartão {id} foi recusado,
 escrevam para {email}`, e a de escolha múltipla com as duas opções escolhidas.
 
+## O CDN da sandbox (cartão 20.7, ADR 0056 no super projeto)
+
+O `dist/uxea.js` aprovado pela bateria vai, no `master`, para
+https://cdn-sandbox.uxea.io/uxea.js (balde R2 `uxea-sdk-sandbox`). Na sandbox o
+`data-servidor` é obrigatório, porque o servidor por omissão é o de produção:
+
+```html
+<script src="https://cdn-sandbox.uxea.io/uxea.js" data-chave="uxea_pro_..."
+        data-servidor="https://ingest-sandbox.uxea.io"></script>
+```
+
 ## Os cartões que o constroem
 
 | Cartão | O que acrescenta |

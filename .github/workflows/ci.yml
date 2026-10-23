@@ -46,3 +46,41 @@ jobs:
 
       - name: Orçamento de tamanho e de fio principal
         run: npm run orcamento
+
+  # **A publicação no CDN da sandbox** (ADR 0056): o `dist/uxea.js` que esta bateria acabou
+  # de aprovar vai para o balde R2 `uxea-sdk-sandbox`, servido em
+  # https://cdn-sandbox.uxea.io/uxea.js. O endereço da ingestão não vem no ficheiro: quem
+  # integra a sandbox escreve `data-servidor="https://ingest-sandbox.uxea.io"`, que é a
+  # linha que o painel da sandbox mostra no fim do registo.
+  publicar:
+    needs: verificar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    concurrency: sandbox-sdk-js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Enviar para o CDN
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_SDK_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SDK_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: |
+          # Cinco minutos de cache: a sandbox muda muitas vezes, e um SDK velho no browser de
+          # quem testa é uma tarde perdida a perseguir um defeito que já foi corrigido.
+          for f in uxea.js uxea.js.map uxea.mjs uxea.mjs.map; do
+            tipo=application/javascript; case "$f" in *.map) tipo=application/json ;; esac
+            aws s3 cp "dist/$f" "s3://uxea-sdk-sandbox/$f" --endpoint-url "${{ secrets.R2_SDK_ENDPOINT }}" \
+              --content-type "$tipo" --cache-control "public, max-age=300"
+          done
+      - name: Responde de fora
+        run: |
+          curl -sf -o /tmp/servido.js "https://cdn-sandbox.uxea.io/uxea.js?v=${{ github.sha }}"
+          cmp /tmp/servido.js dist/uxea.js && echo "o CDN serve o ficheiro desta bateria"
