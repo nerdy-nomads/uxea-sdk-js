@@ -351,40 +351,50 @@ pessoas tocam neste ecrã*, e um mapa em pixéis é um mapa por modelo de telem�
 `toDataURL`, `getDisplayMedia`, `captureStream`, `innerHTML` ou mais oito. É a irmã da
 bateria de fuga: aquela olha para o tráfego, esta olha para o que o código sabe fazer.
 
-## A captura do ecrã: a forma, e nunca o conteúdo (cartão 32.20, ADR 0062)
+## A captura do ecrã: a forma e o texto, nunca uma fotografia (cartões 32.20 e 32.22, ADR 0062 e 0063)
 
-Com o rastreio individual ligado, o SDK tira **uma captura do ecrã por ecrã e por tamanho**
-(telemóvel, tablet, computador), dois segundos e meio depois de o ecrã abrir e quando o
-browser está livre, e manda-a para `POST /v1/capturas`. É ela que deixa o painel desenhar o
-mapa de toques sobre o ecrã a sério, em vez de um esquema de retângulos.
+Com o rastreio individual ligado, o SDK tira **uma captura do ecrã por ecrã e por resolução**
+(telemóvel abaixo de 600 px, tablet abaixo de 1024, computador), dois segundos e meio depois de
+o ecrã abrir e quando o browser está livre, e manda-a para `POST /v1/capturas`. Volta a tirá-la
+quando a janela muda de faixa (rodar o tablet, encolher o browser), depois de 1,5 s parada. É ela
+que deixa o painel desenhar o mapa de toques sobre o ecrã a sério, ao tamanho em que foi visto.
 
-**Não é uma fotografia**, e o `sem-ecra.test.ts` continua igual. O SDK copia a caixa, a cor,
-a borda e o tamanho da letra do que está à vista, e troca o conteúdo **antes** de ele existir
-fora do browser:
+**Não é uma fotografia**, e o `sem-ecra.test.ts` continua igual: não se lê um pixel. O SDK copia
+a caixa, a cor, a borda e a letra do que está à vista, e o **texto da página linha a linha**, com o
+conteúdo pessoal trocado **antes** de existir fora do browser (modo equilibrado, escolhido pelo
+dono do produto):
 
+- **texto da página**: sai, mascarado. Correios, telefones, números de nove dígitos ou mais,
+  números de documento, IBAN, datas, o valor depois de «saldo», códigos de letras e dígitos e o
+  nome depois de um cumprimento («Olá, •••») saem como «•••». **Os preços ficam**;
 - **campos de escrita** (`input`, `textarea`, `select`, `contenteditable`): um bloco, sem o
   valor, sem o comprimento e sem o texto de ajuda;
-- **imagens, ícones, fundos com `url(`**: um retângulo. Substituídas, e não borradas;
+- **imagens, ícones, fundos com `url(`**: um retângulo, com o texto alternativo mascarado ao
+  centro (exceto em ícones e nas zonas da pessoa). Substituídas, e não borradas;
 - **vídeo, áudio, `canvas`, `iframe`**: um retângulo;
-- **texto**: tapado por omissão, numa barra que não diz quantas letras tinha. Só ficam à
-  vista os **rótulos da interface** (botões, `label`, `legend`, `th`, separadores), e mesmo
-  esses com números, datas, horas e correios mascarados.
+- **as zonas da pessoa**: barras sem letra nenhuma. Apanhadas pelas marcas de baixo, pelas
+  marcas de privacidade de outras ferramentas (`data-private`, `data-hj-suppress`,
+  `ph-no-capture`, `rr-mask`, `fs-mask`...) e por heurística, por uma classe, id ou `itemprop`
+  com nome de zona da pessoa (`user-menu`, `avatar`, `perfil`, `conta`, `email`, `telefone`,
+  `morada`, `saldo`...).
 
 Duas marcas, as duas de quem integra:
 
 ```html
-<button data-uxea-ocultar>Maria Tavares ▾</button>   <!-- tapa sempre, até um botão -->
-<nav data-uxea-mostrar>…</nav>                         <!-- liberta o texto fixo desta zona -->
+<p data-uxea-ocultar>Encomenda de Maria Tavares</p>   <!-- tapa sempre, e tudo o que está dentro -->
+<nav class="user-menu" data-uxea-mostrar>…</nav>        <!-- liberta uma zona que a heurística apanhou -->
 ```
 
-**Um botão com o nome da pessoa leva `data-uxea-ocultar`**: a máscara apanha números e
-correios, e não apanha nomes. A ingestão volta a validar tudo e recusa a captura inteira se
-um campo, uma imagem ou uma área tapada trouxer texto.
+**Um nome solto no texto da página leva `data-uxea-ocultar`**: a máscara apanha números,
+correios e cumprimentos, e não reconhece um nome no meio de uma frase. É o limite aceite do modo
+equilibrado (ADR 0063). A ingestão volta a mascarar cada linha e recusa a captura inteira se um
+campo, uma imagem ou uma área tapada trouxer texto.
 
 Para a desligar numa aplicação: `iniciar({ ..., capturaDoEcra: false })`, ou
 `data-captura-ecra="false"` na etiqueta `<script>`. Os ensaios estão em
 `src/captura/retrato.test.ts`, incluindo o de fuga: uma página de pagamento cheia de dados
-pessoais, e nenhum deles na captura.
+pessoais (correio, telefone, NIF, BI, data de nascimento, saldo, avatar), e nenhum deles na
+captura.
 
 ## Ler antes de mexer
 
