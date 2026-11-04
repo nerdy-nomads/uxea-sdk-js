@@ -351,13 +351,22 @@ pessoas tocam neste ecrã*, e um mapa em pixéis é um mapa por modelo de telem�
 `toDataURL`, `getDisplayMedia`, `captureStream`, `innerHTML` ou mais oito. É a irmã da
 bateria de fuga: aquela olha para o tráfego, esta olha para o que o código sabe fazer.
 
-## A captura do ecrã: a forma e o texto, nunca uma fotografia (cartões 32.20 e 32.22, ADR 0062 e 0063)
+## A captura do ecrã: a forma e o texto, nunca uma fotografia (cartões 32.20, 32.22 e 32.23, ADR 0062 a 0064)
 
 Com o rastreio individual ligado, o SDK tira **uma captura do ecrã por ecrã e por resolução**
 (telemóvel abaixo de 600 px, tablet abaixo de 1024, computador), dois segundos e meio depois de
 o ecrã abrir e quando o browser está livre, e manda-a para `POST /v1/capturas`. Volta a tirá-la
 quando a janela muda de faixa (rodar o tablet, encolher o browser), depois de 1,5 s parada. É ela
 que deixa o painel desenhar o mapa de toques sobre o ecrã a sério, ao tamanho em que foi visto.
+
+**É a página inteira, do topo ao fim** (versão 3, ADR 0064), e não só o que está à vista na
+janela: as caixas vão em píxeis da página, com a altura dela em `pagina.altura`. O SDK soma o
+que a página desceu, ou o que desceu o contentor que faz de página numa aplicação de uma página
+só (`#app { height: 100vh; overflow: auto }`); desenha um cabeçalho fixo no topo da página e uma
+barra fixa de baixo no fim dela; e corta os filhos de um contentor com `overflow` à caixa dele,
+como no ecrã. Até 40 000 px, 6000 nós e 20 000 palavras: o que passar sai de fora, e a captura
+diz `pagina.cortada`. Cada toque leva também `toque_pagina_y` (px desde o topo da página) e
+`pagina_altura`, para o calor cair no sítio da página e não no da janela.
 
 **Não é uma fotografia**, e o `sem-ecra.test.ts` continua igual: não se lê um pixel. O SDK copia
 a caixa, a cor, a borda e a letra do que está à vista, e o **texto da página linha a linha**, com o

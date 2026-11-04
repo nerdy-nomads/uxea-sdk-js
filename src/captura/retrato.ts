@@ -28,31 +28,38 @@
  * equilibrado, o mesmo por omissão das ferramentas do género. O que fica sempre
  * tapado está nos ensaios de fuga do `retrato.test.ts`.
  *
- * **As coordenadas são da janela, em permilagem**, como os toques (`toque_x` é da
- * janela, cartão 9.1): é o que faz o calor cair em cima do elemento certo, num
- * telemóvel e num computador. Por isso só entra o que está à vista no visor.
+ * **A página inteira, do topo ao fim, em píxeis da página** (cartão 32.23, ADR 0064).
+ * Até à versão 2 só entrava o que estava à vista na janela, em permilagem dela, e o
+ * dono do produto viu as páginas cortadas. Agora cada caixa é medida na página
+ * (`pagina.ts`: o que o documento ou o rolante desceram, e os elementos fixos ancorados
+ * no topo ou no fim), e cada toque leva a altura dele na página (`toque_pagina_y`),
+ * para o calor cair no sítio certo mesmo depois de descer. O conteúdo de um contentor
+ * com `overflow` fica preso à caixa dele, como no ecrã.
  */
 import { resumo } from "../identity/mask.ts";
 import { ATRIBUTO_FORA } from "./fora.ts";
+import { MAXIMO_DA_PAGINA_PX, medirPagina, type MedidaDaPagina } from "./pagina.ts";
 
-export const VERSAO_RETRATO = 2;
+export const VERSAO_RETRATO = 3;
 export const ATRIBUTO_OCULTAR = "data-uxea-ocultar";
 /** Liberta uma zona que a heurística das zonas da pessoa tapava. A máscara continua. */
 export const ATRIBUTO_MOSTRAR = "data-uxea-mostrar";
-/** Um ecrã com mais do que isto é desenhado até aqui: o resto é ruído para um mapa. */
-export const MAXIMO_DE_NOS = 3000;
+/** Uma página com mais do que isto é desenhada até aqui, e a captura diz que foi cortada. */
+export const MAXIMO_DE_NOS = 6000;
 export const MAXIMO_DE_TEXTO = 200;
 /** A barra de um texto tapado cresce aos saltos, para não dizer o comprimento dele. */
 export const DEGRAU_DA_BARRA_PX = 48;
 /** Palavras medidas por captura, para partir o texto em linhas. Acima disto, uma linha por nó. */
-export const MAXIMO_DE_PALAVRAS = 6000;
+export const MAXIMO_DE_PALAVRAS = 20000;
+/** Elementos percorridos por captura, para uma árvore enorme não pesar na aplicação. */
+export const MAXIMO_DE_ELEMENTOS = 60000;
 export const TAPADO = "•••";
 
 export type TipoDeNo = "b" | "t" | "o" | "c" | "i" | "m";
 
 export interface NoDoRetrato {
   k: TipoDeNo;
-  /** Caixa na janela, em permilagem (0 a 1000). */
+  /** Caixa na página, em px (versão 3); até à 2 era em permilagem da janela. */
   x: number; y: number; l: number; a: number;
   /** Fundo, cor do texto e borda, em `#rrggbb` ou `#rrggbbaa`. */
   f?: string; c?: string; b?: string;
@@ -73,6 +80,8 @@ export interface Retrato {
   screen_key: string;
   app_version: string;
   visor: { largura: number; altura: number };
+  /** A página inteira: a altura dela em px, e se não coube toda na captura. */
+  pagina: { altura: number; cortada?: true };
   faixa: "movel" | "tablet" | "computador";
   /** O desenho sem texto nenhum: muda quando o ecrã muda de forma. */
   assinatura: string;
@@ -88,6 +97,7 @@ interface EstiloLido {
   backgroundColor: string; backgroundImage: string; color: string;
   borderTopWidth: string; borderTopColor: string; borderTopLeftRadius: string;
   fontSize: string; fontWeight: string; fontFamily: string; textTransform: string;
+  position: string; overflow: string; overflowX: string; overflowY: string;
 }
 
 /** O que se lê do browser. Injetável, porque os ensaios não têm motor de desenho. */
@@ -216,9 +226,12 @@ const CLASSES_PRIVADAS = new Set([
 ]);
 /**
  * O nome de uma classe ou de um `id` que diz que a zona é da pessoa. Compostos, e não
- * palavras soltas: `product-name` é do catálogo, `user-name` é da pessoa.
+ * palavras soltas: `product-name` é do catálogo, `user-name` é da pessoa. As exceções são
+ * as palavras que sozinhas já são a zona da pessoa (`perfil`, `conta`, `profile`,
+ * `account`): o ADR 0063 promete-as, e uma `<div class="perfil">` com o nome e a morada
+ * passava inteira (encontrado ao verificar a 32.23).
  */
-const NOME_PRIVADO = /(^|[-_])(avatar|e-?mail|correio|telefone|telemovel|phone|mobile-number|morada|address|endereco|saldo|balance|iban|nif|bi-numero)([-_]|$)|^(user|usuario|utilizador|cliente|customer|member|membro|account|conta|profile|perfil|me)[-_]?(name|nome|email|info|details|dados|data|card|cartao|menu|avatar|photo|foto|pic)$/i;
+const NOME_PRIVADO = /^(perfil|profile|conta|account|minha-conta|my-account|a-minha-conta|dados-pessoais|personal-(?:data|info|details))$|(^|[-_])(avatar|e-?mail|correio|telefone|telemovel|phone|mobile-number|morada|address|endereco|saldo|balance|iban|nif|bi-numero)([-_]|$)|^(user|usuario|utilizador|cliente|customer|member|membro|account|conta|profile|perfil|me)[-_]?(name|nome|email|info|details|dados|data|card|cartao|menu|avatar|photo|foto|pic)$/i;
 const ITEMPROP_PRIVADO = new Set(["email", "telephone", "address", "streetaddress", "givenname", "familyname", "birthdate", "taxid"]);
 
 function classesDe(el: any): string[] {
@@ -269,15 +282,23 @@ function px(v: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Onde um elemento cai na página: o que se soma à caixa dele na janela, e o recorte. */
+interface Lugar { ox: number; oy: number; corte: Caixa | null }
+
+const OVERFLOW_QUE_CORTA = new Set(["hidden", "auto", "scroll", "clip", "overlay"]);
+
 /**
- * Monta a captura do que está à vista. Puro: não envia nada nem guarda nada.
+ * Monta a captura da página inteira. Puro: não envia nada nem guarda nada.
  *
- * Devolve `null` quando não há visor (um documento sem janela, um separador a
- * fechar): melhor não desenhar do que desenhar um ecrã de zero por zero.
+ * `pagina` é a medida do `pagina.ts`; sem ela, a página é a janela (os ensaios, e um
+ * documento que não desce). Devolve `null` quando não há visor (um documento sem
+ * janela, um separador a fechar): melhor não desenhar do que desenhar um ecrã de zero
+ * por zero.
  */
 export function retratar(entrada: {
   documento: any;
   visor: { largura: number; altura: number };
+  pagina?: Pick<MedidaDaPagina, "altura" | "dx" | "dy" | "rolante" | "cortada">;
   ecra: string;
   versao: string;
   leitor: Leitor;
@@ -285,46 +306,61 @@ export function retratar(entrada: {
   const { documento, visor, leitor } = entrada;
   const W = Math.round(visor.largura), H = Math.round(visor.altura);
   if (!(W > 0) || !(H > 0) || !documento?.body) return null;
+  const P = Math.max(H, Math.min(MAXIMO_DA_PAGINA_PX, Math.round(entrada.pagina?.altura ?? H)));
+  const rolante = entrada.pagina?.rolante ?? null;
+  let cortada = !!entrada.pagina?.cortada;
 
   const nos: NoDoRetrato[] = [];
   const orcamento = { palavras: MAXIMO_DE_PALAVRAS };
-  const pm = (c: Caixa): Caixa | null => {
-    const x0 = Math.max(0, c.x), y0 = Math.max(0, c.y);
-    const x1 = Math.min(W, c.x + c.l), y1 = Math.min(H, c.y + c.a);
+  // A caixa na página: a da janela mais o deslocamento do lugar, presa à página e ao
+  // recorte do contentor. Píxeis inteiros.
+  const naPagina = (c: Caixa, lugar: Lugar): Caixa | null => {
+    let x0 = c.x + lugar.ox, y0 = c.y + lugar.oy, x1 = x0 + c.l, y1 = y0 + c.a;
+    x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(W, x1); y1 = Math.min(P, y1);
+    if (lugar.corte) {
+      const k = lugar.corte;
+      x0 = Math.max(x0, k.x); y0 = Math.max(y0, k.y); x1 = Math.min(x1, k.x + k.l); y1 = Math.min(y1, k.y + k.a);
+    }
     if (x1 - x0 < 1 || y1 - y0 < 1) return null;
-    const q = (v: number, t: number) => Math.max(0, Math.min(1000, Math.round((v / t) * 1000)));
-    return { x: q(x0, W), y: q(y0, H), l: Math.max(1, q(x1 - x0, W)), a: Math.max(1, q(y1 - y0, H)) };
+    // Arredondam-se as pontas, e não a largura: assim a caixa nunca passa da página.
+    const x = Math.round(x0), y = Math.round(y0);
+    return { x, y, l: Math.max(1, Math.round(x1) - x), a: Math.max(1, Math.round(y1) - y) };
   };
-  const juntar = (k: TipoDeNo, c: Caixa, extra: Partial<NoDoRetrato> = {}): boolean => {
-    if (nos.length >= MAXIMO_DE_NOS) return false;
-    const p = pm(c);
+  const juntar = (k: TipoDeNo, c: Caixa, lugar: Lugar, extra: Partial<NoDoRetrato> = {}): boolean => {
+    if (nos.length >= MAXIMO_DE_NOS) { cortada = true; return false; }
+    const p = naPagina(c, lugar);
     if (!p) return true;
+    // Uma linha de texto que um contentor cortou a menos de metade não se lê no ecrã, e
+    // desenhada numa caixa de 1 px saía como uma letra inteira por cima do que está ao lado.
+    if (k === "t" && p.a < c.a / 2) return true;
     nos.push({ k, ...p, ...extra });
     return true;
   };
-  const tapado = (k: TipoDeNo, c: Caixa, e: Partial<EstiloLido> | null) =>
-    juntar(k, c, {
+  const tapado = (k: TipoDeNo, c: Caixa, lugar: Lugar, e: Partial<EstiloLido> | null) =>
+    juntar(k, c, lugar, {
       ...(px(e?.borderTopLeftRadius) > 0 ? { r: Math.min(64, Math.round(px(e?.borderTopLeftRadius))) } : {}),
     });
-  const barra = (c: Caixa) =>
-    // Presa ao visor (o `pm` corta) e não à caixa do elemento: presa ao elemento, um
+  const barra = (c: Caixa, lugar: Lugar) =>
+    // Presa à página e ao recorte, e não à caixa do elemento: presa ao elemento, um
     // título do tamanho do nome voltava a dizer o tamanho do nome.
-    juntar("o", { ...c, l: Math.ceil(c.l / DEGRAU_DA_BARRA_PX) * DEGRAU_DA_BARRA_PX });
+    juntar("o", { ...c, l: Math.ceil(c.l / DEGRAU_DA_BARRA_PX) * DEGRAU_DA_BARRA_PX }, lugar);
 
-  // O fundo da página, primeiro e por baixo de tudo: sem ele, uma página escura
-  // desenhava-se branca, e o texto claro dela deixava de se ver.
+  // O fundo da página, primeiro e por baixo de tudo, do topo ao fim: sem ele, uma
+  // página escura desenhava-se branca, e o texto claro dela deixava de se ver.
   const raiz = documento.documentElement;
   const fundo = corDe(leitor.estilo(documento.body)?.backgroundColor) || (raiz ? corDe(leitor.estilo(raiz)?.backgroundColor) : "");
-  if (fundo) juntar("b", { x: 0, y: 0, l: W, a: H }, { f: fundo });
+  const pagina: Lugar = { ox: entrada.pagina?.dx ?? 0, oy: entrada.pagina?.dy ?? 0, corte: null };
+  if (fundo) juntar("b", { x: 0, y: 0, l: W, a: P }, { ox: 0, oy: 0, corte: null }, { f: fundo });
 
   // Em profundidade e pela ordem do documento, que é a ordem em que o browser pinta
   // na grande maioria dos ecrãs. Uma pilha à mão, e não recursão: uma árvore funda
   // não pode rebentar a pilha da aplicação anfitriã. Cada entrada leva se está dentro
-  // de uma zona da pessoa, para não ter de subir a árvore a cada nó.
-  const pilha: Array<[any, boolean]> = [[documento.body, false]];
+  // de uma zona da pessoa e o lugar na página, para não ter de subir a árvore a cada nó.
+  const pilha: Array<[any, boolean, Lugar]> = [[documento.body, false, pagina]];
   let visitados = 0;
-  while (pilha.length > 0 && nos.length < MAXIMO_DE_NOS && visitados < 30000) {
-    const [el, privadoAcima] = pilha.pop()!;
+  while (pilha.length > 0 && nos.length < MAXIMO_DE_NOS) {
+    if (visitados >= MAXIMO_DE_ELEMENTOS) { cortada = true; break; }
+    const [el, privadoAcima, acima] = pilha.pop()!;
     visitados++;
     if (!el || el.nodeType !== 1) continue;
     const nome = nomeDe(el);
@@ -332,9 +368,17 @@ export function retratar(entrada: {
     if (temAtributo(el, ATRIBUTO_FORA)) continue;
     const e = leitor.estilo(el);
     if (e && (e.display === "none" || e.visibility === "hidden" || e.visibility === "collapse" || e.opacity === "0")) continue;
-    const caixa = leitor.caixa(el);
-    const fora = caixa && (caixa.y >= H || caixa.y + caixa.a <= 0 || caixa.x >= W || caixa.x + caixa.l <= 0);
-    if (fora) continue;
+    const naJanela = leitor.caixa(el);
+    // Um elemento fixo desenha-se no topo da página, ou no fim quando está na metade
+    // de baixo da janela; os filhos vão com ele.
+    const lugar: Lugar = e?.position === "fixed"
+      ? { ox: 0, oy: naJanela && naJanela.y > H / 2 ? P - H : 0, corte: null }
+      : acima;
+    // O rolante desenha-se com a altura do conteúdo, e não só a da janela.
+    const caixa = naJanela && el === rolante
+      ? { ...naJanela, a: Math.max(naJanela.a, P - (naJanela.y + lugar.oy)) }
+      : naJanela;
+    if (caixa && !naPagina(caixa, lugar)) continue;
     // `data-uxea-ocultar` ganha sempre, até dentro de uma zona libertada.
     const privado = temAtributo(el, ATRIBUTO_OCULTAR) || (privadoAcima && !temAtributo(el, ATRIBUTO_MOSTRAR)) || zonaPrivada(el);
 
@@ -343,39 +387,39 @@ export function retratar(entrada: {
       if (tipo === "hidden" || !caixa) continue;
       if (BOTOES_INPUT.has(tipo)) {
         // Um botão feito de `input`: o rótulo é o `value`, e é da interface.
-        juntar("b", caixa, estiloDoBloco(e));
+        juntar("b", caixa, lugar, estiloDoBloco(e));
         const tx = privado ? "" : mascararCaptura(String(atributo(el, "value") ?? ""));
-        if (tx) juntar("t", caixa, { tx, ...estiloDoTexto(e) });
-        else if (privado) barra(caixa);
+        if (tx) juntar("t", caixa, lugar, { tx, ...estiloDoTexto(e) });
+        else if (privado) barra(caixa, lugar);
         continue;
       }
-      tapado("c", caixa, e);
+      tapado("c", caixa, lugar, e);
       continue;
     }
     if (CAMPOS.has(nome) || (el.isContentEditable === true) || atributo(el, "contenteditable") === "true") {
-      if (caixa) tapado("c", caixa, e);
+      if (caixa) tapado("c", caixa, lugar, e);
       continue;
     }
     if (IMAGENS.has(nome)) {
       if (caixa) {
-        tapado("i", caixa, e);
+        tapado("i", caixa, lugar, e);
         // O texto alternativo diz o que lá está («Café de Amboim»), e passa pela mesma
         // máscara. Numa zona da pessoa, ou num ícone, não leva nada: o `alt` de um avatar
         // é o nome de quem lá está.
         if (!privado && caixa.l >= ICONE_PX && caixa.a >= ICONE_PX) {
           const alt = mascararCaptura(String(atributo(el, "alt") ?? atributo(el, "aria-label") ?? atributo(el, "title") ?? ""));
-          if (alt) juntar("t", caixa, { tx: alt, al: 1, s: 12 });
+          if (alt) juntar("t", caixa, lugar, { tx: alt, al: 1, s: 12 });
         }
       }
       continue;
     }
-    if (MULTIMEDIA.has(nome)) { if (caixa) tapado("m", caixa, e); continue; }
+    if (MULTIMEDIA.has(nome)) { if (caixa) tapado("m", caixa, lugar, e); continue; }
 
     if (caixa) {
-      if (/url\(/i.test(String(e?.backgroundImage ?? ""))) tapado("i", caixa, e);
+      if (/url\(/i.test(String(e?.backgroundImage ?? ""))) tapado("i", caixa, lugar, e);
       else {
         const bloco = estiloDoBloco(e);
-        if (bloco.f || bloco.b) juntar("b", caixa, bloco);
+        if (bloco.f || bloco.b) juntar("b", caixa, lugar, bloco);
       }
     }
 
@@ -396,27 +440,42 @@ export function retratar(entrada: {
         ? linhas
         : (() => { const cx = leitor.caixaDoTexto?.(f) ?? caixa; return cx ? [{ ...cx, texto: bruto }] : []; })();
       for (const linha of partes) {
-        if (privado) { if (!barra(linha)) { cheio = true; break; } continue; }
+        if (privado) { if (!barra(linha, lugar)) { cheio = true; break; } continue; }
         let tx = mascararCaptura(linha.texto);
         if (maiusculas) tx = tx.toUpperCase();
-        if (tx && !juntar("t", linha, { tx, ...estiloTexto })) { cheio = true; break; }
+        if (tx && !juntar("t", linha, lugar, { tx, ...estiloTexto })) { cheio = true; break; }
       }
     }
 
+    // O lugar dos filhos: o conteúdo do rolante desce com ele, e um contentor com
+    // `overflow` corta o que lhe sai da caixa, como no ecrã (uma lista que desce lá
+    // dentro desenhava-se por cima do resto da página). O corpo e a raiz não cortam:
+    // são a página.
+    let lugarDosFilhos = lugar;
+    if (el === rolante) {
+      lugarDosFilhos = { ...lugar, oy: lugar.oy + Math.round(px(String(el.scrollTop ?? 0))), corte: lugar.corte };
+    } else if (naJanela && nome !== "BODY" && nome !== "HTML" && e
+      && [e.overflow, e.overflowX, e.overflowY].some((o) => OVERFLOW_QUE_CORTA.has(String(o ?? "")))) {
+      const k = naPagina(naJanela, lugar);
+      if (k) lugarDosFilhos = { ...lugar, corte: k };
+    }
     // Os filhos entram ao contrário na pilha, para saírem pela ordem do documento.
     const elementos = el.children ?? [];
-    for (let i = elementos.length - 1; i >= 0; i--) pilha.push([elementos[i], privado]);
+    for (let i = elementos.length - 1; i >= 0; i--) pilha.push([elementos[i], privado, lugarDosFilhos]);
   }
+  if (pilha.length > 0) cortada = true;
 
   // A assinatura é a forma, sem texto nenhum: dois clientes com nomes diferentes no
   // mesmo ecrã dão a mesma, e o ecrã não volta a sair por causa disso.
-  const forma = nos.map((n) => `${n.k}${Math.round(n.x / 20)},${Math.round(n.y / 20)},${Math.round(n.l / 20)},${Math.round(n.a / 20)}`).join(";");
+  // Em degraus de 40 px: um texto que muda de tamanho meia letra não é um ecrã novo.
+  const forma = nos.map((n) => `${n.k}${Math.round(n.x / 40)},${Math.round(n.y / 40)},${Math.round(n.l / 40)},${Math.round(n.a / 40)}`).join(";");
   return {
     v: VERSAO_RETRATO,
     ofuscada: true,
     screen_key: String(entrada.ecra).slice(0, 256),
     app_version: String(entrada.versao).slice(0, 64),
     visor: { largura: W, altura: H },
+    pagina: { altura: P, ...(cortada ? { cortada: true as const } : {}) },
     faixa: faixaDe(W),
     assinatura: resumo(`v${VERSAO_RETRATO}|${faixaDe(W)}|${forma}`),
     nos,
@@ -499,7 +558,7 @@ export function ligarRetratos(o: {
       altura: Number(o.janela?.innerHeight ?? 0),
     };
     const r = retratar({
-      documento: o.documento, visor, ecra, versao: o.versao,
+      documento: o.documento, visor, pagina: medirPagina(o.janela, o.documento), ecra, versao: o.versao,
       leitor: o.leitor ?? leitorDoBrowser(o.janela, o.documento),
     });
     if (!r || r.nos.length === 0) return;

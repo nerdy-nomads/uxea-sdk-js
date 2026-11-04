@@ -277,7 +277,7 @@
       ]
     },
     "toque": {
-      "$comment": "RF-GRA-01 a RF-GRA-05 e RF-IND-01 a RF-IND-03. As coordenadas vão em percentagem, e não em pixels: um mapa de calor tem de sobrepor telemóveis e computadores. São duas percentagens diferentes e é de propósito: `toque_x` é da janela, e é o que desenha o mapa; `alvo_x` é da caixa do elemento, e é o que diz se a pessoa acertou no meio do botão ou na beira dele. A `alvo_caixa` é a caixa do elemento na janela, e é dela que a reconstrução esquemática do ecrã se faz, sem nenhuma captura",
+      "$comment": "RF-GRA-01 a RF-GRA-05 e RF-IND-01 a RF-IND-03. As coordenadas vão em percentagem, e não em pixels: um mapa de calor tem de sobrepor telemóveis e computadores. São duas percentagens diferentes e é de propósito: `toque_x` é da janela, e é o que desenha o mapa; `alvo_x` é da caixa do elemento, e é o que diz se a pessoa acertou no meio do botão ou na beira dele. A `alvo_caixa` é a caixa do elemento na janela, e é dela que a reconstrução esquemática do ecrã se faz, sem nenhuma captura. `toque_pagina_y` e `pagina_altura` vão em pixels, e são a exceção: dizem a altura do toque na página inteira e a altura dela (cartão 32.23), para o calor cair no sítio certo da captura da página depois de a pessoa descer; os elementos fixos contam no topo ou no fim da página, onde a captura os desenha",
       "chaves": [
         "toque_x",
         "toque_y",
@@ -291,6 +291,8 @@
         "alvo_caixa",
         "visor_largura",
         "visor_altura",
+        "toque_pagina_y",
+        "pagina_altura",
         "ordem_na_sequencia"
       ]
     },

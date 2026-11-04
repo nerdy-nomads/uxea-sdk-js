@@ -44,6 +44,7 @@ import { protegido } from "../safe.ts";
 import { acionavel } from "../identity/index.ts";
 import type { ElementoLike } from "../identity/element.ts";
 import { foraDaCaptura, eventoForaDaCaptura } from "./fora.ts";
+import { encontrarRolante, medirPagina, yNaPagina } from "./pagina.ts";
 
 export interface ContextoDeToque {
   emitir(tipo: string, extras?: Record<string, unknown>): void;
@@ -185,6 +186,15 @@ export function ligarToques(janela: any, documento: any, ctx: ContextoDeToque): 
   // RF-IND-01 a pede, e é o que faz duas visitas ao mesmo ecrã comparar-se uma com
   // a outra. Recomeça no `ecraNovo`.
   let ordem = 0;
+  // O contentor que desce, quando não é o documento (`pagina.ts`). Procurá-lo custa uma
+  // volta pela árvore, e por isso guarda-se uns segundos: entre dois toques seguidos o
+  // ecrã não troca de rolante.
+  let rolante: { el: any; em: number } | null = null;
+  const rolanteAgora = () => {
+    const agora = ctx.agora();
+    if (!rolante || agora - rolante.em > 5000) rolante = { el: encontrarRolante(janela, documento), em: agora };
+    return rolante.el;
+  };
 
   // A rajada: o mesmo elemento tocado várias vezes seguidas. Emite-se **uma vez
   // no fim**, com a contagem e o intervalo médio, e não um evento por toque: um
@@ -282,12 +292,20 @@ export function ligarToques(janela: any, documento: any, ctx: ContextoDeToque): 
     // o rastreio no cartão 9.5 parar mesmo de recolher, e não só de mostrar.
     const segue = ctx.detalhado() && (ctx.individual?.() ?? true);
     ordem++;
+    // E a altura na página inteira (cartão 32.23): `toque_y` é da janela, e um toque
+    // depois de descer caía no topo da captura da página. Os elementos fixos ficam
+    // onde a captura os desenha, no topo ou no fim.
+    const naPagina = segue ? (() => {
+      const m = medirPagina(janela, documento, rolanteAgora());
+      return { toque_pagina_y: yNaPagina(sob, y, m, janela), pagina_altura: m.altura };
+    })() : {};
     const coordenadas = segue
       ? {
           toque_x: porCento(x, larguraVisor),
           toque_y: porCento(y, alturaVisor),
           visor_largura: larguraVisor,
           visor_altura: alturaVisor,
+          ...naPagina,
           ordem_na_sequencia: ordem,
         }
       : {};

@@ -1,6 +1,6 @@
 /**
- * A captura ofuscada (cartões 32.20 e 32.22, ADR 0062 e 0063): o que sai do browser e
- * o que nunca sai.
+ * A captura ofuscada (cartões 32.20, 32.22 e 32.23, ADR 0062, 0063 e 0064): o que sai do
+ * browser e o que nunca sai, agora da página inteira.
  *
  * O documento é o do `linkedom`, que não tem motor de desenho: as caixas e os estilos
  * vêm de um leitor de ensaio, que os lê de `data-caixa` (x,y,largura,altura em px) e
@@ -127,9 +127,9 @@ test("campos, imagens, multimédia e zonas da pessoa viram blocos sem conteúdo"
   // Só o produto leva o texto alternativo, e marcado como tal: o avatar é da pessoa.
   const alts = r.nos.filter((n) => n.al === 1).map((n) => n.tx);
   assert.deepEqual(alts, ["Cafeteira italiana"]);
-  // O campo guarda a forma: 16/390 de largura em permilagem, e o canto redondo.
+  // O campo guarda a forma, em píxeis da página (versão 3), e o canto redondo.
   const montante = tipos("c")[0]!;
-  assert.deepEqual([montante.x, montante.y, montante.l, montante.a], [41, 190, 918, 52]);
+  assert.deepEqual([montante.x, montante.y, montante.l, montante.a], [16, 160, 358, 44]);
   assert.equal(montante.r, 8);
 });
 
@@ -137,9 +137,9 @@ test("o texto das zonas da pessoa é uma barra que não diz quantas letras tinha
   const barras = captura().nos.filter((n) => n.k === "o");
   // O menu da conta e a área marcada com data-uxea-ocultar.
   assert.equal(barras.length, 2);
-  const menu = barras.find((b) => b.y === Math.round((60 / 844) * 1000))!;
+  const menu = barras.find((b) => b.y === 60)!;
   // 190 px arredondam a 192 (quatro degraus de 48): a largura da barra não é a do nome.
-  assert.equal(menu.l, Math.round((192 / 390) * 1000));
+  assert.equal(menu.l, 192);
 });
 
 test("a máscara equilibrada: o que identifica alguém sai, o catálogo fica", () => {
@@ -158,15 +158,17 @@ test("a máscara equilibrada: o que identifica alguém sai, o catálogo fica", (
   for (const [entrada, saida] of casos) assert.equal(mascararCaptura(entrada), saida, entrada);
 });
 
-test("os blocos levam as cores, e o que está fora do visor não entra", () => {
+test("os blocos levam as cores, e o que está fora da página não entra", () => {
   const r = captura();
-  assert.equal(r.v, 2);
+  assert.equal(r.v, 3);
   assert.equal(r.faixa, "movel");
   assert.equal(r.visor.largura, 390);
+  // Sem medida da página, a página é a janela, e o que está abaixo dela fica de fora.
+  assert.deepEqual(r.pagina, { altura: 844 });
   assert.ok(r.nos.some((n) => n.k === "b" && n.f === "#1f4fd1"));
-  // O fundo da página vem primeiro, do tamanho do visor.
-  assert.deepEqual([r.nos[0]!.k, r.nos[0]!.f, r.nos[0]!.l, r.nos[0]!.a], ["b", "#ffffff", 1000, 1000]);
-  assert.ok(r.nos.every((n) => n.y + n.a <= 1000 && n.x + n.l <= 1000));
+  // O fundo da página vem primeiro, do tamanho dela.
+  assert.deepEqual([r.nos[0]!.k, r.nos[0]!.f, r.nos[0]!.l, r.nos[0]!.a], ["b", "#ffffff", 390, 844]);
+  assert.ok(r.nos.every((n) => n.y + n.a <= 844 && n.x + n.l <= 390));
   assert.equal(r.ofuscada, true);
   assert.match(r.assinatura, /^[0-9a-f]{8}$/);
 });
@@ -275,4 +277,116 @@ test("uma captura por resolução: rodar o telemóvel ou estreitar a janela tira
 
   l.desligar();
   assert.equal(aoMudar, null, "desligar tira o ouvinte da janela");
+});
+
+/* ------------------------------------------------- a página inteira (32.23) */
+
+const pagina = (corpo: string) => parseHTML(`<!doctype html><html><body data-caixa="0,0,390,844" style="background-color: rgb(250, 250, 250)">${corpo}</body></html>`).document;
+const textosDe = (r: ReturnType<typeof retratar>) => r!.nos.filter((n) => n.k === "t").map((n) => [n.tx, n.y] as const);
+
+test("a página inteira entra, do topo ao fim, e não só a janela", () => {
+  const r = captura();
+  const { document } = parseHTML(PAGINA);
+  const inteira = retratar({
+    documento: document, visor: { largura: 390, altura: 844 }, ecra: "/pagar", versao: "1", leitor,
+    pagina: { altura: 1400, dx: 0, dy: 0, rolante: null, cortada: false },
+  })!;
+  assert.deepEqual(inteira.pagina, { altura: 1400 });
+  // O parágrafo a 900 px estava fora da janela e fora da captura da 32.22.
+  assert.ok(!JSON.stringify(r).includes("Abaixo da dobra"));
+  const abaixo = inteira.nos.find((n) => n.tx === "Abaixo da dobra, fora do visor")!;
+  assert.ok(abaixo, "o que está abaixo da dobra não entrou");
+  assert.equal(abaixo.y, 900);
+  // O fundo cobre a página toda.
+  assert.deepEqual([inteira.nos[0]!.l, inteira.nos[0]!.a], [390, 1400]);
+  assert.ok(inteira.nos.every((n) => n.y + n.a <= 1400 && n.x + n.l <= 390));
+});
+
+test("depois de descer, cada coisa fica no sítio da página, e os fixos no topo e no fim", () => {
+  // A pessoa desceu 500 px: as caixas que o browser dá são da janela, e a página soma-lhes os 500.
+  const documento = pagina(`
+    <header data-caixa="0,0,390,56" style="position: fixed; background-color: rgb(20, 20, 20)"><p data-caixa="16,16,200,24">Loja de ensaio</p></header>
+    <p data-caixa="16,300,300,24">Descrição a meio da página</p>
+    <nav data-caixa="0,780,390,64" style="position: fixed; background-color: rgb(255, 255, 255)"><a data-caixa="20,800,80,24" href="/">Início</a></nav>`);
+  const r = retratar({
+    documento, visor: { largura: 390, altura: 844 }, ecra: "/", versao: "1", leitor,
+    pagina: { altura: 2000, dx: 0, dy: 500, rolante: null, cortada: false },
+  })!;
+  const em = new Map(textosDe(r));
+  assert.equal(em.get("Descrição a meio da página"), 800, "300 na janela, mais 500 de descida");
+  // O cabeçalho fixo desenha-se no topo da página, e não onde a pessoa estava.
+  assert.equal(em.get("Loja de ensaio"), 16);
+  // A barra fixa de baixo desenha-se no fim da página: 2000 - 844 + 800.
+  assert.equal(em.get("Início"), 1956);
+});
+
+test("um contentor com overflow corta o que lhe sai da caixa, como no ecrã", () => {
+  const documento = pagina(`
+    <div data-caixa="0,100,390,100" style="overflow-y: auto">
+      <p data-caixa="16,120,300,24">Primeira linha da lista</p>
+      <p data-caixa="16,196,300,24">Linha cortada a meio da letra</p>
+      <p data-caixa="16,400,300,24">Linha escondida dentro da lista</p>
+    </div>`);
+  const r = retratar({
+    documento, visor: { largura: 390, altura: 844 }, ecra: "/", versao: "1", leitor,
+    pagina: { altura: 1200, dx: 0, dy: 0, rolante: null, cortada: false },
+  })!;
+  const t = textosDe(r).map(([tx]) => tx);
+  assert.ok(t.includes("Primeira linha da lista"));
+  assert.ok(!t.includes("Linha escondida dentro da lista"), "o que a lista esconde desenhava-se por cima do resto da página");
+  // 4 px de 24 à vista: no ecrã não se lê, e na captura não entra.
+  assert.ok(!t.includes("Linha cortada a meio da letra"), "uma linha de 4 px desenhava-se como uma letra inteira");
+});
+
+test("quando quem desce é um contentor, a página é o conteúdo dele", () => {
+  const { document } = parseHTML(`<!doctype html><html><body data-caixa="0,0,390,844">
+    <main id="app" data-caixa="0,0,390,844" style="overflow-y: auto"><p data-caixa="16,100,300,24">Mais abaixo na aplicação</p></main></body></html>`);
+  const rolante = document.getElementById("app");
+  (rolante as any).scrollTop = 1200;
+  const r = retratar({
+    documento: document, visor: { largura: 390, altura: 844 }, ecra: "/", versao: "1", leitor,
+    pagina: { altura: 3000, dx: 0, dy: 0, rolante, cortada: false },
+  })!;
+  assert.equal(new Map(textosDe(r)).get("Mais abaixo na aplicação"), 1300, "100 na janela, mais os 1200 que o contentor desceu");
+});
+
+test("uma página maior do que cabe sai até onde coube, e diz que foi cortada", () => {
+  const { document } = parseHTML(PAGINA);
+  const r = retratar({
+    documento: document, visor: { largura: 390, altura: 844 }, ecra: "/pagar", versao: "1", leitor,
+    pagina: { altura: 40000, dx: 0, dy: 0, rolante: null, cortada: true },
+  })!;
+  assert.deepEqual(r.pagina, { altura: 40000, cortada: true });
+});
+
+test("as palavras que sozinhas já são a zona da pessoa tapam tudo o que está dentro", () => {
+  for (const zona of ['class="perfil"', 'id="conta"', 'class="cartao profile"', 'class="my-account"', 'class="dados-pessoais"']) {
+    const documento = pagina(`<div ${zona} data-caixa="16,100,358,40"><p data-caixa="16,100,358,40">Rosa Quissanga, Rua Rainha Ginga 27</p></div>`);
+    const r = retratar({ documento, visor: { largura: 390, altura: 844 }, ecra: "/", versao: "1", leitor })!;
+    const corpo = JSON.stringify(r);
+    assert.ok(!corpo.includes("Quissanga") && !corpo.includes("Ginga"), `a zona ${zona} deixou passar o nome e a morada`);
+    assert.ok(r.nos.some((n) => n.k === "o"), `a zona ${zona} não ficou tapada`);
+  }
+  // E o catálogo continua à vista: `product-name` não é da pessoa.
+  const catalogo = pagina(`<h1 class="product-name" data-caixa="16,100,358,40">Cafeteira italiana</h1>`);
+  assert.ok(JSON.stringify(retratar({ documento: catalogo, visor: { largura: 390, altura: 844 }, ecra: "/", versao: "1", leitor })).includes("Cafeteira italiana"));
+});
+
+test("o fundo da página também passa pela máscara: nada da pessoa sai, nem lá em baixo", () => {
+  const documento = pagina(`
+    <p data-caixa="16,1800,358,24">Contacto: rosa.quissanga@exemplo.ao · +244 912 345 678</p>
+    <p data-caixa="16,1830,358,24">NIF 5417230981 · nasceu a 03/04/1985</p>
+    <section class="morada" data-caixa="16,1860,358,40"><p data-caixa="16,1860,358,40">Rua Rainha Ginga 27, Luanda</p></section>
+    <div class="perfil" data-caixa="16,2000,358,24"><p data-caixa="16,2000,358,24">Rosa Quissanga, cliente desde 2019</p></div>
+    <input data-caixa="16,1910,358,44" value="Rosa Quissanga">
+    <p data-caixa="16,1960,358,24">Café de Amboim · 4500 Kz</p>`);
+  const r = retratar({
+    documento, visor: { largura: 390, altura: 844 }, ecra: "/", versao: "1", leitor,
+    pagina: { altura: 2100, dx: 0, dy: 0, rolante: null, cortada: false },
+  })!;
+  const corpo = JSON.stringify(r);
+  for (const proibido of ["rosa", "Quissanga", "exemplo.ao", "912", "345 678", "5417230981", "1985", "Ginga", "Luanda"]) {
+    assert.ok(!corpo.includes(proibido), `«${proibido}» saiu do fundo da página`);
+  }
+  assert.ok(corpo.includes("Café de Amboim · 4500 Kz"), "o texto da página lê-se lá em baixo");
 });
