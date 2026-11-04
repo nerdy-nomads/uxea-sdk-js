@@ -351,6 +351,41 @@ pessoas tocam neste ecrã*, e um mapa em pixéis é um mapa por modelo de telem�
 `toDataURL`, `getDisplayMedia`, `captureStream`, `innerHTML` ou mais oito. É a irmã da
 bateria de fuga: aquela olha para o tráfego, esta olha para o que o código sabe fazer.
 
+## A captura do ecrã: a forma, e nunca o conteúdo (cartão 32.20, ADR 0062)
+
+Com o rastreio individual ligado, o SDK tira **uma captura do ecrã por ecrã e por tamanho**
+(telemóvel, tablet, computador), dois segundos e meio depois de o ecrã abrir e quando o
+browser está livre, e manda-a para `POST /v1/capturas`. É ela que deixa o painel desenhar o
+mapa de toques sobre o ecrã a sério, em vez de um esquema de retângulos.
+
+**Não é uma fotografia**, e o `sem-ecra.test.ts` continua igual. O SDK copia a caixa, a cor,
+a borda e o tamanho da letra do que está à vista, e troca o conteúdo **antes** de ele existir
+fora do browser:
+
+- **campos de escrita** (`input`, `textarea`, `select`, `contenteditable`): um bloco, sem o
+  valor, sem o comprimento e sem o texto de ajuda;
+- **imagens, ícones, fundos com `url(`**: um retângulo. Substituídas, e não borradas;
+- **vídeo, áudio, `canvas`, `iframe`**: um retângulo;
+- **texto**: tapado por omissão, numa barra que não diz quantas letras tinha. Só ficam à
+  vista os **rótulos da interface** (botões, `label`, `legend`, `th`, separadores), e mesmo
+  esses com números, datas, horas e correios mascarados.
+
+Duas marcas, as duas de quem integra:
+
+```html
+<button data-uxea-ocultar>Maria Tavares ▾</button>   <!-- tapa sempre, até um botão -->
+<nav data-uxea-mostrar>…</nav>                         <!-- liberta o texto fixo desta zona -->
+```
+
+**Um botão com o nome da pessoa leva `data-uxea-ocultar`**: a máscara apanha números e
+correios, e não apanha nomes. A ingestão volta a validar tudo e recusa a captura inteira se
+um campo, uma imagem ou uma área tapada trouxer texto.
+
+Para a desligar numa aplicação: `iniciar({ ..., capturaDoEcra: false })`, ou
+`data-captura-ecra="false"` na etiqueta `<script>`. Os ensaios estão em
+`src/captura/retrato.test.ts`, incluindo o de fuga: uma página de pagamento cheia de dados
+pessoais, e nenhum deles na captura.
+
 ## Ler antes de mexer
 
 A secção 5.1 do documento de requisitos, e as decisões **D-03** e **D-10** em

@@ -43,6 +43,12 @@ export interface Opcoes {
    * recusar na mesma com `consentimento(false)`.
    */
   consentimento?: "exigido" | "implicito";
+  /**
+   * A captura do ecrã ofuscada (cartão 32.20, ADR 0062), que desenha o mapa de toques
+   * sobre o ecrã a sério. Só corre com o rastreio individual do projeto ligado; com
+   * `false`, não corre nunca nesta aplicação. Por omissão, ligada.
+   */
+  capturaDoEcra?: boolean;
   /** Só para ensaios: relógio, armazenamento e transporte substituíveis. */
   ambiente?: Partial<Ambiente>;
 }

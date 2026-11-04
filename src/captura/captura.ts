@@ -55,6 +55,8 @@ export interface Nucleo {
    * dizer.
    */
   mensagemExposta?(chave: string): boolean;
+  /** Um ecrã abriu: é o que agenda a captura ofuscada dele (cartão 32.20). */
+  ecraAberto?(): void;
 }
 
 /**
@@ -200,6 +202,7 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
     // ter mudado punha a profundidade no ecrã errado.
     deslocamento.ecraNovo();
     progressao.passo(nova);
+    nucleo.ecraAberto?.();
   };
 
   // Uma aplicação de página única não recarrega: a navegação é uma chamada ao
@@ -334,6 +337,7 @@ export function ligar(janela: any, documento: any, nucleo: Nucleo): Ligacao {
       nucleo.emitir("ecra", {});
       toques.ecraNovo();
       deslocamento.ecraNovo();
+      nucleo.ecraAberto?.();
     },
     esconder() {
       if (aVistaDesde > 0) tempoAtivoMs += Math.max(0, Math.round(nucleo.agora() - aVistaDesde));

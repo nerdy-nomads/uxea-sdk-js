@@ -22,6 +22,7 @@ import { identidade, guardarUtilizador, pseudonimizar, type Identidade } from ".
 import { ligar as ligarCaptura, chaveDeEcra, type Ligacao, type Nucleo } from "./captura/captura.ts";
 import { contextoDe } from "./captura/contexto.ts";
 import { ligarRede } from "./captura/rede.ts";
+import { ligarRetratos, type Leitor } from "./captura/retrato.ts";
 import { capturaTipo, obter as obterConfig } from "./config/remoto.ts";
 import { validar } from "./event/validar.ts";
 import { ligarInqueritos, type ResumoDeInqueritos } from "./inquerito/index.ts";
@@ -273,6 +274,18 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
     if (t0) est.msFio += janela.performance.now() - t0;
   };
 
+  // A captura do ecrã ofuscada (cartão 32.20, ADR 0062): uma por ecrã e por tamanho
+  // de ecrã, fora do caminho da aplicação, e só com o rastreio individual ligado,
+  // que é o que o mapa de toques precisa para existir.
+  const retratos = ligarRetratos({
+    janela, documento, armazenamento: amb.armazenamento, agora: () => amb.agora(),
+    ecra: () => ecraForcado || ecraDe(), versao: String(versaoApp),
+    permitido: () => op.capturaDoEcra !== false && est.ligado && amostrado && config.rastreioIndividual === true,
+    enviar: (corpo) => amb.enviar(`${servidor}/v1/capturas`, corpo, { "X-UXEA-Key": op.chave }, false, "POST"),
+    leitor: (op.ambiente as { leitor?: Leitor } | undefined)?.leitor,
+    esperar: (op.ambiente as { esperar?: (fn: () => void, ms: number) => unknown } | undefined)?.esperar,
+  });
+
   // Pedidos da aplicação anfitriã em voo. É o que deixa dizer que um toque foi
   // dado **enquanto o sistema estava ocupado** (RF-GRA-05), que é uma coisa
   // diferente de um toque que não deu nada.
@@ -291,6 +304,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
     // A lista vem da configuração remota, e por isso é decisão da instituição e
     // não de quem escreveu a aplicação.
     mensagemExposta: (chave: string) => config.mensagensExpostas.includes(chave),
+    ecraAberto: () => retratos.ecraNovo(),
   };
 
   let ligacao: Ligacao | null = null;
@@ -449,6 +463,7 @@ function iniciarCaptura(op: Opcoes, consentimento: () => Diagnostico["consentime
       est.ligado = false;
       inqueritos.desligar();
       ligacao?.desligar();
+      retratos.desligar();
       ligacaoRede?.desligar();
       for (const d of desligarCiclo.splice(0)) d();
       trabalhador?.terminar();
@@ -584,6 +599,7 @@ export function arranqueAutomatico(janela: any = (globalThis as any).window): Ux
       versao: el.getAttribute("data-versao") ?? undefined,
       automatico: el.getAttribute("data-automatico") !== "false",
       consentimento: el.getAttribute("data-consentimento") === "exigido" ? "exigido" : "implicito",
+      capturaDoEcra: el.getAttribute("data-captura-ecra") !== "false",
     });
     janela.uxea = uxea;
     return uxea;

@@ -29,6 +29,8 @@
   #diagnostico { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; background: #14181d; color: #cfe3d8; border-radius: 8px; padding: 16px; min-height: 420px; }
   aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #6b6560; margin: 0 0 10px; }
   footer { max-width: 1080px; margin: 0 auto 40px; padding: 0 22px; color: #6b6560; font-size: 13px; }
+  .resumo-encomenda { display: flex; gap: 12px; align-items: center; background: #f6f7f9; border: 1px solid #dde1e6; border-radius: 10px; padding: 10px 12px; margin: 0 0 16px; }
+  .resumo-encomenda p { margin: 2px 0; }
 </style>
 <!-- Isto é a integração inteira: uma linha, e mais nada. -->
 <script src="../dist/uxea.js" data-chave="CHAVE_AQUI" data-servidor="http://localhost:8710"></script>
@@ -46,6 +48,18 @@
   <section>
     <h1 id="titulo">Pagar a encomenda</h1>
     <p class="nota">Nenhum campo desta página está instrumentado. O SDK captura sozinho.</p>
+    <!--
+      O resumo da encomenda do cartão 32.20: uma fotografia, o nome de quem compra, o
+      montante e o correio. A captura do ecrã tem de os tapar a todos, e a página não
+      marca nada para isso acontecer.
+    -->
+    <div class="resumo-encomenda" id="resumo">
+      <img src="produto.svg" alt="Cafeteira italiana" width="64" height="64">
+      <div>
+        <p><strong>Olá, Maria Joana Tavares</strong></p>
+        <p>Cafeteira italiana · 12.400 Kz · maria.tavares@exemplo.ao</p>
+      </div>
+    </div>
     <form id="pagamento" novalidate>
       <label for="nome">Nome no cartão</label>
       <input id="nome" name="nome" placeholder="como está no cartão" required data-testid="campo-nome">
