@@ -61,7 +61,10 @@ test("2.4 o lote respeita o limite de tamanho", () => {
 test("2.4 em rede medida, o SDK abranda em vez de desligar", () => {
   assert.deepEqual(limitesPara(undefined), LIMITES);
   const poupa = limitesPara({ saveData: true });
-  assert.equal(poupa.intervaloMs, 60000);
+  // 45 s e não 60: com 60, a sonda do cartão 20.3 mediu um p95 de 59,6 s da captura à
+  // consulta, e o RNF-DES-03 dá 60.
+  assert.equal(poupa.intervaloMs, 45000);
+  assert.ok(poupa.intervaloMs + 15000 <= 60000, "a janela deixa 15 s para a rede e para a escrita");
   assert.ok(poupa.maxLote > LIMITES.maxLote, "com dados contados, os lotes são maiores e mais raros");
   assert.equal(limitesPara({ effectiveType: "2g" }).intervaloMs, 30000);
 });

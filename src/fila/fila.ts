@@ -39,13 +39,21 @@ export const LIMITES: Limites = {
  * Em rede medida ou lenta, o SDK abranda em vez de desligar: lotes maiores e
  * menos frequentes gastam menos bateria e menos dados do que muitos pedidos
  * pequenos, e continuam a não perder nada.
+ *
+ * **A janela da poupança de dados é 45 s, e não 60.** O RNF-DES-03 dá 60 s da captura à
+ * consulta, e a sonda de latência (cartão 20.3) mediu o que uma janela de 60 s fazia: um
+ * evento capturado logo a seguir a um envio esperava a janela inteira, mais o envio numa
+ * rede lenta e a escrita, e o p95 ficava em 59,6 s, com o pior caso acima do limite. Com 45
+ * s sobra margem para a rede e para a escrita.
  */
+export const JANELA_POUPAR_DADOS_MS = 45000;
+
 export function limitesPara(conexao: any, base: Limites = LIMITES): Limites {
   if (!conexao) return base;
   const poupar = conexao.saveData === true;
   const lenta = conexao.effectiveType === "2g" || conexao.effectiveType === "slow-2g";
   if (!poupar && !lenta) return base;
-  return { ...base, intervaloMs: poupar ? 60000 : 30000, maxLote: 200, maxBytes: 128 * 1024 };
+  return { ...base, intervaloMs: poupar ? JANELA_POUPAR_DADOS_MS : 30000, maxLote: 200, maxBytes: 128 * 1024 };
 }
 
 export interface Estado {
